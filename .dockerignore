@@ -4,3 +4,6 @@ dist
 .env
 .DS_Store
 npm-debug.log*
+oldArcade/
+guidelines/
+test-render.js
