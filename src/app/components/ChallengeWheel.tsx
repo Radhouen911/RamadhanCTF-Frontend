@@ -67,7 +67,7 @@ export function ChallengeWheel({
       >
         <motion.div
           className="relative"
-          style={{ width: 'min(480px, 90vw)', height: 'min(480px, 90vw)' }}
+          style={{ width: 'min(420px, 88vw, 60vh)', height: 'min(420px, 88vw, 60vh)' }}
           initial={{ rotate: 360, scale: 0.7, opacity: 0 }}
           animate={{ rotate: 0, scale: 1, opacity: 1 }}
           transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
@@ -209,7 +209,7 @@ export function ChallengeWheel({
                     fill={`url(#grad-${cat.id})`}
                     stroke={isActive ? cat.color : 'rgba(255,255,255,0.07)'}
                     strokeWidth={isActive ? 1.5 : 0.5}
-                    opacity={isDimmed ? 0.45 : 1}
+                    opacity={isDimmed ? 0.62 : 1}
                     style={{
                       cursor: 'pointer',
                       transition: 'opacity 0.3s ease',
@@ -318,26 +318,27 @@ export function ChallengeWheel({
               <div key={cat.id} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                 <div style={{ position: 'absolute', left: `${iconLeft}%`, top: `${iconTop}%`, transform: 'translate(-50%, -50%)' }}>
                   <IconComp
-                    size={20}
+                    size={isActive ? 22 : 20}
                     color={isActive ? cat.color : `rgba(255,255,255,${isDimmed ? 0.3 : 0.8})`}
                     style={{
-                      transition: 'color 0.3s ease, filter 0.3s ease',
-                      filter: isActive ? `drop-shadow(0 0 6px ${cat.color})` : 'none',
+                      transition: 'color 0.3s ease, filter 0.3s ease, transform 0.3s ease',
+                      filter: isActive ? `drop-shadow(0 0 10px ${cat.color}) drop-shadow(0 0 16px ${cat.color}80)` : 'none',
+                      transform: isActive ? 'scale(1.08)' : 'scale(1)',
                     }}
                   />
                 </div>
                 <div style={{ position: 'absolute', left: `${labelLeft}%`, top: `${labelTop}%`, transform: 'translate(-50%, -50%)', width: '60px', textAlign: 'center' }}>
                   <span style={{
                     fontFamily: 'Rajdhani, sans-serif',
-                    fontSize: '10px',
-                    fontWeight: '700',
+                    fontSize: isActive ? '11px' : '10px',
+                    fontWeight: isActive ? '800' : '700',
                     letterSpacing: '1.8px',
                     textTransform: 'uppercase',
                     color: isActive ? cat.color : `rgba(255,255,255,${isDimmed ? 0.25 : 0.65})`,
-                    transition: 'color 0.3s ease',
+                    transition: 'color 0.3s ease, font-size 0.3s ease, text-shadow 0.3s ease',
                     display: 'block',
                     whiteSpace: 'nowrap',
-                    textShadow: isActive ? `0 0 8px ${cat.color}` : 'none',
+                    textShadow: isActive ? `0 0 10px ${cat.color}, 0 0 18px ${cat.color}88` : 'none',
                   }}>
                     {cat.name}
                   </span>

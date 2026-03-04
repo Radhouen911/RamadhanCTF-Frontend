@@ -264,7 +264,7 @@ export function Challenges() {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden overflow-y-auto flex flex-col"
+      className="min-h-screen relative overflow-x-hidden overflow-y-auto md:overflow-y-hidden flex flex-col"
       style={{ background: 'linear-gradient(160deg, #060b15 0%, #0a0f20 40%, #090d1e 70%, #06090f 100%)' }}
     >
       {/* Layer 0: Background effects */}
@@ -280,13 +280,13 @@ export function Challenges() {
       <Header totalPoints={totalPoints} solvedCount={solvedCount} />
 
       {/* Layer 3: Main content */}
-      <div className="relative flex-1 flex flex-col" style={{ zIndex: 10, paddingTop: '80px' }}>
+      <div className="relative flex-1 flex flex-col" style={{ zIndex: 10, paddingTop: '72px' }}>
         {/* Page title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.7 }}
-          className="text-center pt-6 pb-2 px-4"
+          className="text-center pt-3 pb-1 px-4"
         >
           <h1
             style={{
@@ -317,7 +317,7 @@ export function Challenges() {
           </p>
 
           {/* Decorative divider */}
-          <div className="flex items-center justify-center gap-3 mt-4">
+          <div className="flex items-center justify-center gap-3 mt-3">
             <div style={{ height: '1px', width: '80px', background: 'linear-gradient(90deg, transparent, rgba(212,165,32,0.4))' }} />
             <svg width="16" height="16" viewBox="0 0 16 16">
               <polygon points="8,1 10,6 15,6 11,10 12.5,15 8,12 3.5,15 5,10 1,6 6,6" fill="rgba(212,165,32,0.6)" />
@@ -328,18 +328,19 @@ export function Challenges() {
 
         {/* Main layout: wheel + panel */}
         <div
-          className="flex items-stretch justify-center"
-          style={{ minHeight: 'calc(100vh - 240px)' }}
+          className="flex items-stretch justify-center gap-5"
+          style={{ minHeight: 'calc(100vh - 210px)' }}
         >
           {/* Wheel column */}
           <motion.div
-            layout
-            className="flex flex-col items-center justify-center gap-6 px-4 py-6"
+            className="flex flex-col items-center justify-center gap-4 px-4 py-2"
             style={{
-              flex: selectedCategory ? '0 0 auto' : '1',
+              flex: '0 0 auto',
+              width: 'min(620px, 100%)',
               minWidth: 0,
             }}
-            transition={{ layout: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
+            animate={{ x: selectedCategory ? -38 : 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           >
             <ChallengeWheel
               selectedCategory={selectedCategory}
@@ -354,17 +355,16 @@ export function Challenges() {
           </motion.div>
 
           {/* Challenge panel — slide in with x/opacity only (no width animation) */}
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence initial={false}>
             {selectedCategory && selectedCat && (
               <motion.div
-                key={selectedCategory}
+                key="desktop-panel"
                 className="hidden md:block"
                 style={{
                   width: '380px',
                   flexShrink: 0,
-                  height: 'calc(100vh - 80px)',
-                  position: 'sticky',
-                  top: '80px',
+                  height: 'calc(100vh - 150px)',
+                  marginTop: '10px',
                   zIndex: 20,
                 }}
                 initial={{ opacity: 0, x: 50 }}
@@ -384,10 +384,10 @@ export function Challenges() {
         </div>
 
         {/* Mobile panel (bottom sheet style) */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {selectedCategory && selectedCat && (
             <motion.div
-              key={`mobile-${selectedCategory}`}
+              key="mobile-panel"
               className="md:hidden fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden"
               style={{
                 zIndex: 50,
