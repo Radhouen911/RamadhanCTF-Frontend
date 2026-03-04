@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { StarField } from '../components/StarField';
-import { IslamicPattern } from '../components/IslamicPattern';
-import { Header } from '../components/Header';
-import { ChallengeWheel } from '../components/ChallengeWheel';
-import { ChallengePanel } from '../components/ChallengePanel';
-import { categories } from '../components/data';
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useMemo, useState } from "react";
+import { ChallengePanel } from "../components/ChallengePanel";
+import { ChallengeWheel } from "../components/ChallengeWheel";
+import { categories as defaultCategories, type Category, type Challenge as DataChallenge } from "../components/data";
+import { Header } from "../components/Header";
+import { IslamicPattern } from "../components/IslamicPattern";
+import { StarField } from "../components/StarField";
+import { ctfdApi } from "../../services/ctfdApi";
+import type { Challenge as ApiChallenge } from "../../services/ctfdApi";
 
 // Initially solved challenges (mock data)
 const INITIAL_SOLVED = new Set([2, 6, 14, 23]);
@@ -28,26 +30,78 @@ function CrescentDecor() {
           </filter>
         </defs>
         {/* Large crescent */}
-        <circle cx="60" cy="55" r="42" fill="#fbbf24" opacity="0.18" filter="url(#deco-glow)" />
+        <circle
+          cx="60"
+          cy="55"
+          r="42"
+          fill="#fbbf24"
+          opacity="0.18"
+          filter="url(#deco-glow)"
+        />
         <circle cx="60" cy="55" r="38" fill="#fbbf24" opacity="0.12" />
         <circle cx="74" cy="47" r="30" fill="#060b15" opacity="0.95" />
         {/* Stars */}
-        <polygon points="90,20 92,26 98,26 93,30 95,36 90,32 85,36 87,30 82,26 88,26" fill="#fbbf24" opacity="0.8" />
+        <polygon
+          points="90,20 92,26 98,26 93,30 95,36 90,32 85,36 87,30 82,26 88,26"
+          fill="#fbbf24"
+          opacity="0.8"
+        />
         <circle cx="100" cy="48" r="2" fill="#fbbf24" opacity="0.6" />
         <circle cx="95" cy="10" r="1.5" fill="#fbbf24" opacity="0.4" />
         {/* Lantern silhouette */}
         <g transform="translate(42, 95)" opacity="0.45">
           <rect x="14" y="0" width="2" height="10" fill="#fbbf24" />
           <ellipse cx="15" cy="12" rx="14" ry="4" fill="#fbbf24" />
-          <rect x="2" y="12" width="26" height="32" rx="4" fill="none" stroke="#fbbf24" strokeWidth="1.5" />
-          <rect x="2" y="12" width="26" height="32" rx="4" fill="#fbbf24" opacity="0.06" />
+          <rect
+            x="2"
+            y="12"
+            width="26"
+            height="32"
+            rx="4"
+            fill="none"
+            stroke="#fbbf24"
+            strokeWidth="1.5"
+          />
+          <rect
+            x="2"
+            y="12"
+            width="26"
+            height="32"
+            rx="4"
+            fill="#fbbf24"
+            opacity="0.06"
+          />
           {/* Lantern lines */}
-          <line x1="15" y1="12" x2="15" y2="44" stroke="#fbbf24" strokeWidth="0.8" opacity="0.5" />
-          <line x1="2" y1="28" x2="28" y2="28" stroke="#fbbf24" strokeWidth="0.8" opacity="0.5" />
+          <line
+            x1="15"
+            y1="12"
+            x2="15"
+            y2="44"
+            stroke="#fbbf24"
+            strokeWidth="0.8"
+            opacity="0.5"
+          />
+          <line
+            x1="2"
+            y1="28"
+            x2="28"
+            y2="28"
+            stroke="#fbbf24"
+            strokeWidth="0.8"
+            opacity="0.5"
+          />
           <ellipse cx="15" cy="44" rx="14" ry="4" fill="#fbbf24" />
           <rect x="6" y="44" width="18" height="6" rx="2" fill="#fbbf24" />
           {/* Glow from lantern */}
-          <ellipse cx="15" cy="28" rx="10" ry="10" fill="#fbbf24" opacity="0.08" filter="url(#deco-glow)" />
+          <ellipse
+            cx="15"
+            cy="28"
+            rx="10"
+            ry="10"
+            fill="#fbbf24"
+            opacity="0.08"
+            filter="url(#deco-glow)"
+          />
         </g>
       </svg>
     </div>
@@ -57,11 +111,11 @@ function CrescentDecor() {
 // Small floating stars decoration
 function FloatingStars() {
   const stars = [
-    { x: '8%', y: '30%', size: 16, delay: 0 },
-    { x: '4%', y: '60%', size: 10, delay: 0.5 },
-    { x: '92%', y: '65%', size: 12, delay: 1 },
-    { x: '88%', y: '45%', size: 8, delay: 1.5 },
-    { x: '12%', y: '80%', size: 14, delay: 0.8 },
+    { x: "8%", y: "30%", size: 16, delay: 0 },
+    { x: "4%", y: "60%", size: 10, delay: 0.5 },
+    { x: "92%", y: "65%", size: 12, delay: 1 },
+    { x: "88%", y: "45%", size: 8, delay: 1.5 },
+    { x: "12%", y: "80%", size: 14, delay: 0.8 },
   ];
   return (
     <>
@@ -71,7 +125,12 @@ function FloatingStars() {
           className="absolute pointer-events-none"
           style={{ left: s.x, top: s.y, zIndex: 1 }}
           animate={{ y: [0, -8, 0], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 3 + i, repeat: Infinity, delay: s.delay, ease: 'easeInOut' }}
+          transition={{
+            duration: 3 + i,
+            repeat: Infinity,
+            delay: s.delay,
+            ease: "easeInOut",
+          }}
         >
           <svg width={s.size} height={s.size} viewBox="0 0 20 20">
             <polygon
@@ -89,42 +148,47 @@ function FloatingStars() {
 // Ambient glow orbs behind the wheel
 function AmbientOrbs({ selectedColor }: { selectedColor?: string }) {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+      style={{ zIndex: 1 }}
+    >
       {/* Central glow */}
       <div
         className="absolute rounded-full"
         style={{
-          width: '600px',
-          height: '600px',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
+          width: "600px",
+          height: "600px",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
           background: selectedColor
             ? `radial-gradient(circle, ${selectedColor}08 0%, transparent 65%)`
-            : 'radial-gradient(circle, rgba(212,165,32,0.06) 0%, transparent 65%)',
-          transition: 'background 0.6s ease',
+            : "radial-gradient(circle, rgba(212,165,32,0.06) 0%, transparent 65%)",
+          transition: "background 0.6s ease",
         }}
       />
       {/* Top purple orb */}
       <div
         className="absolute rounded-full"
         style={{
-          width: '400px',
-          height: '400px',
-          left: '20%',
-          top: '-10%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)',
+          width: "400px",
+          height: "400px",
+          left: "20%",
+          top: "-10%",
+          background:
+            "radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)",
         }}
       />
       {/* Bottom blue orb */}
       <div
         className="absolute rounded-full"
         style={{
-          width: '300px',
-          height: '300px',
-          right: '15%',
-          bottom: '-5%',
-          background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)',
+          width: "300px",
+          height: "300px",
+          right: "15%",
+          bottom: "-5%",
+          background:
+            "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)",
         }}
       />
     </div>
@@ -132,7 +196,11 @@ function AmbientOrbs({ selectedColor }: { selectedColor?: string }) {
 }
 
 // Score summary bar
-function ScoreBar({ totalPoints, solvedCount, totalChallenges }: {
+function ScoreBar({
+  totalPoints,
+  solvedCount,
+  totalChallenges,
+}: {
   totalPoints: number;
   solvedCount: number;
   totalChallenges: number;
@@ -145,31 +213,41 @@ function ScoreBar({ totalPoints, solvedCount, totalChallenges }: {
       transition={{ delay: 1.8, duration: 0.6 }}
       className="flex items-center gap-4 px-5 py-3 rounded-2xl"
       style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(212,165,32,0.15)',
-        backdropFilter: 'blur(12px)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
-        maxWidth: '460px',
-        width: '100%',
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(212,165,32,0.15)",
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+        maxWidth: "460px",
+        width: "100%",
         zIndex: 10,
       }}
     >
       {/* Progress ring mini */}
       <div className="relative flex-shrink-0">
         <svg width="44" height="44" viewBox="0 0 44 44">
-          <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(212,165,32,0.1)" strokeWidth="3" />
           <circle
-            cx="22" cy="22" r="18"
+            cx="22"
+            cy="22"
+            r="18"
+            fill="none"
+            stroke="rgba(212,165,32,0.1)"
+            strokeWidth="3"
+          />
+          <circle
+            cx="22"
+            cy="22"
+            r="18"
             fill="none"
             stroke="#fbbf24"
             strokeWidth="3"
-            strokeDasharray={`${2 * Math.PI * 18 * progressPct / 100} ${2 * Math.PI * 18 * (1 - progressPct / 100)}`}
+            strokeDasharray={`${(2 * Math.PI * 18 * progressPct) / 100} ${2 * Math.PI * 18 * (1 - progressPct / 100)}`}
             strokeDashoffset={2 * Math.PI * 18 * 0.25}
             strokeLinecap="round"
-            style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.5))' }}
+            style={{ filter: "drop-shadow(0 0 4px rgba(251,191,36,0.5))" }}
           />
           <text
-            x="22" y="22"
+            x="22"
+            y="22"
             textAnchor="middle"
             dominantBaseline="middle"
             fill="#fbbf24"
@@ -185,23 +263,45 @@ function ScoreBar({ totalPoints, solvedCount, totalChallenges }: {
       {/* Stats */}
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1.5">
-          <span style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+          <span
+            style={{
+              fontFamily: "Rajdhani, sans-serif",
+              fontSize: "11px",
+              letterSpacing: "2px",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+            }}
+          >
             Overall Progress
           </span>
-          <span style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '12px', fontWeight: '700', color: '#fbbf24' }}>
+          <span
+            style={{
+              fontFamily: "Rajdhani, sans-serif",
+              fontSize: "12px",
+              fontWeight: "700",
+              color: "#fbbf24",
+            }}
+          >
             {solvedCount}/{totalChallenges} solved
           </span>
         </div>
-        <div style={{ height: '3px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+        <div
+          style={{
+            height: "3px",
+            borderRadius: "3px",
+            background: "rgba(255,255,255,0.06)",
+            overflow: "hidden",
+          }}
+        >
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 1, delay: 2, ease: 'easeOut' }}
+            transition={{ duration: 1, delay: 2, ease: "easeOut" }}
             style={{
-              height: '100%',
-              borderRadius: '3px',
-              background: 'linear-gradient(90deg, #b8860b, #fbbf24)',
-              boxShadow: '0 0 6px rgba(251,191,36,0.5)',
+              height: "100%",
+              borderRadius: "3px",
+              background: "linear-gradient(90deg, #b8860b, #fbbf24)",
+              boxShadow: "0 0 6px rgba(251,191,36,0.5)",
             }}
           />
         </div>
@@ -209,10 +309,27 @@ function ScoreBar({ totalPoints, solvedCount, totalChallenges }: {
 
       {/* Points */}
       <div className="text-right flex-shrink-0">
-        <p style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '20px', fontWeight: '700', color: '#fbbf24', lineHeight: 1 }}>
+        <p
+          style={{
+            fontFamily: "Rajdhani, sans-serif",
+            fontSize: "20px",
+            fontWeight: "700",
+            color: "#fbbf24",
+            lineHeight: 1,
+          }}
+        >
           {totalPoints.toLocaleString()}
         </p>
-        <p style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(251,191,36,0.45)', marginTop: '2px' }}>
+        <p
+          style={{
+            fontFamily: "Rajdhani, sans-serif",
+            fontSize: "10px",
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+            color: "rgba(251,191,36,0.45)",
+            marginTop: "2px",
+          }}
+        >
           points
         </p>
       </div>
@@ -220,11 +337,85 @@ function ScoreBar({ totalPoints, solvedCount, totalChallenges }: {
   );
 }
 
-import { Footer } from '../components/Footer';
+import { Footer } from "../components/Footer";
 
 export function Challenges() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [solvedIds, setSolvedIds] = useState<Set<number>>(INITIAL_SOLVED);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch challenges from CTFd API
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        const response = await ctfdApi.getChallenges();
+        const apiChallenges = response.data || [];
+
+        // Group challenges by category
+        const categoryMap: Record<string, ApiChallenge[]> = {};
+        apiChallenges.forEach((challenge: ApiChallenge) => {
+          const cat = challenge.category || "Misc";
+          if (!categoryMap[cat]) {
+            categoryMap[cat] = [];
+          }
+          categoryMap[cat].push(challenge);
+        });
+
+        // Convert to category format with colors from defaultCategories
+        const newCategories: Category[] = Object.entries(categoryMap).map(
+          ([categoryName, challenges]) => {
+            const defaultCat = defaultCategories.find(
+              (c) => c.name.toLowerCase() === categoryName.toLowerCase(),
+            );
+
+            const id = categoryName.toLowerCase().replace(/\s+/g, "");
+            return {
+              id,
+              name: categoryName,
+              iconName: defaultCat?.iconName || "Sparkles",
+              color: defaultCat?.color || "#22d3ee",
+              darkColor: defaultCat?.darkColor || "#164e63",
+              midColor: defaultCat?.midColor || "#0891b2",
+              glowColor: defaultCat?.glowColor || "rgba(34, 211, 238, 0.6)",
+              challenges: challenges.map((c) => ({
+                id: c.id,
+                name: c.name,
+                points: c.value || 0,
+                difficulty: "Medium" as const,
+                solves: c.solves || 0,
+                solved: c.solved_by_me || false,
+                description: c.description || "",
+                tags: [],
+                hasContainer: false,
+              })),
+            };
+          },
+        );
+
+        setCategories(newCategories);
+
+        // Update solvedIds based on API response
+        const solvedSet = new Set<number>();
+        apiChallenges.forEach((challenge: ApiChallenge) => {
+          if (challenge.solved_by_me) {
+            solvedSet.add(challenge.id);
+          }
+        });
+        if (solvedSet.size > 0) {
+          setSolvedIds(solvedSet);
+        }
+      } catch (error) {
+        console.error("Failed to fetch challenges:", error);
+        // Fall back to default categories
+        setCategories(defaultCategories);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChallenges();
+  }, []);
 
   const handleCategoryClick = (id: string) => {
     setSelectedCategory((prev) => (prev === id ? null : id));
@@ -247,13 +438,16 @@ export function Challenges() {
       counts[cat.id] = { solved, total: cat.challenges.length };
     });
     return counts;
-  }, [solvedIds]);
+  }, [solvedIds, categories]);
 
   // Global stats
-  const totalChallenges = categories.reduce((s, c) => s + c.challenges.length, 0);
+  const totalChallenges = categories.reduce(
+    (s, c) => s + c.challenges.length,
+    0,
+  );
   const solvedCount = categories.reduce(
     (s, cat) => s + cat.challenges.filter((c) => solvedIds.has(c.id)).length,
-    0
+    0,
   );
   const totalPoints = categories
     .flatMap((c) => c.challenges)
@@ -265,7 +459,10 @@ export function Challenges() {
   return (
     <div
       className="min-h-screen relative overflow-x-hidden overflow-y-auto md:overflow-y-hidden flex flex-col"
-      style={{ background: 'linear-gradient(160deg, #060b15 0%, #0a0f20 40%, #090d1e 70%, #06090f 100%)' }}
+      style={{
+        background:
+          "linear-gradient(160deg, #060b15 0%, #0a0f20 40%, #090d1e 70%, #06090f 100%)",
+      }}
     >
       {/* Layer 0: Background effects */}
       <StarField />
@@ -280,7 +477,24 @@ export function Challenges() {
       <Header totalPoints={totalPoints} solvedCount={solvedCount} />
 
       {/* Layer 3: Main content */}
-      <div className="relative flex-1 flex flex-col" style={{ zIndex: 10, paddingTop: '72px' }}>
+      {loading ? (
+        <div className="relative z-10 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-3 border-amber-500/30 border-t-amber-400 rounded-full mx-auto mb-4"
+            />
+            <p className="font-[Rajdhani] text-amber-400 text-sm tracking-widest uppercase">
+              Loading Challenges...
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="relative flex-1 flex flex-col"
+          style={{ zIndex: 10, paddingTop: "72px" }}
+        >
         {/* Page title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -290,27 +504,28 @@ export function Challenges() {
         >
           <h1
             style={{
-              fontFamily: 'Cinzel Decorative, serif',
-              fontSize: 'clamp(22px, 4vw, 36px)',
-              fontWeight: '700',
-              background: 'linear-gradient(135deg, #d4a520 0%, #fbbf24 40%, #c084fc 80%, #d4a520 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              letterSpacing: '3px',
-              textShadow: 'none',
-              marginBottom: '6px',
+              fontFamily: "Cinzel Decorative, serif",
+              fontSize: "clamp(22px, 4vw, 36px)",
+              fontWeight: "700",
+              background:
+                "linear-gradient(135deg, #d4a520 0%, #fbbf24 40%, #c084fc 80%, #d4a520 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              letterSpacing: "3px",
+              textShadow: "none",
+              marginBottom: "6px",
             }}
           >
             Challenges
           </h1>
           <p
             style={{
-              fontFamily: 'Rajdhani, sans-serif',
-              fontSize: '12px',
-              letterSpacing: '4px',
-              textTransform: 'uppercase',
-              color: 'rgba(212,165,32,0.45)',
+              fontFamily: "Rajdhani, sans-serif",
+              fontSize: "12px",
+              letterSpacing: "4px",
+              textTransform: "uppercase",
+              color: "rgba(212,165,32,0.45)",
             }}
           >
             Ramadan 1446 AH &nbsp;·&nbsp; Night of Code
@@ -318,25 +533,42 @@ export function Challenges() {
 
           {/* Decorative divider */}
           <div className="flex items-center justify-center gap-3 mt-3">
-            <div style={{ height: '1px', width: '80px', background: 'linear-gradient(90deg, transparent, rgba(212,165,32,0.4))' }} />
+            <div
+              style={{
+                height: "1px",
+                width: "80px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(212,165,32,0.4))",
+              }}
+            />
             <svg width="16" height="16" viewBox="0 0 16 16">
-              <polygon points="8,1 10,6 15,6 11,10 12.5,15 8,12 3.5,15 5,10 1,6 6,6" fill="rgba(212,165,32,0.6)" />
+              <polygon
+                points="8,1 10,6 15,6 11,10 12.5,15 8,12 3.5,15 5,10 1,6 6,6"
+                fill="rgba(212,165,32,0.6)"
+              />
             </svg>
-            <div style={{ height: '1px', width: '80px', background: 'linear-gradient(90deg, rgba(212,165,32,0.4), transparent)' }} />
+            <div
+              style={{
+                height: "1px",
+                width: "80px",
+                background:
+                  "linear-gradient(90deg, rgba(212,165,32,0.4), transparent)",
+              }}
+            />
           </div>
         </motion.div>
 
         {/* Main layout: wheel + panel */}
         <div
           className="flex items-stretch justify-center gap-5"
-          style={{ minHeight: 'calc(100vh - 210px)' }}
+          style={{ minHeight: "calc(100vh - 210px)" }}
         >
           {/* Wheel column */}
           <motion.div
             className="flex flex-col items-center justify-center gap-4 px-4 py-2"
             style={{
-              flex: '0 0 auto',
-              width: 'min(620px, 100%)',
+              flex: "0 0 auto",
+              width: "min(620px, 100%)",
               minWidth: 0,
             }}
             animate={{ x: selectedCategory ? -38 : 0 }}
@@ -361,10 +593,10 @@ export function Challenges() {
                 key="desktop-panel"
                 className="hidden md:block"
                 style={{
-                  width: '380px',
+                  width: "380px",
                   flexShrink: 0,
-                  height: 'calc(100vh - 150px)',
-                  marginTop: '10px',
+                  height: "calc(100vh - 150px)",
+                  marginTop: "10px",
                   zIndex: 20,
                 }}
                 initial={{ opacity: 0, x: 50 }}
@@ -391,11 +623,11 @@ export function Challenges() {
               className="md:hidden fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden"
               style={{
                 zIndex: 50,
-                maxHeight: '65vh',
+                maxHeight: "65vh",
               }}
-              initial={{ y: '100%' }}
+              initial={{ y: "100%" }}
               animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              exit={{ y: "100%" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               <ChallengePanel
@@ -411,9 +643,15 @@ export function Challenges() {
         {/* Bottom decorative bar */}
         <div
           className="fixed bottom-0 left-0 right-0 pointer-events-none"
-          style={{ zIndex: 5, height: '2px', background: 'linear-gradient(90deg, transparent, rgba(212,165,32,0.25), rgba(192,132,252,0.2), transparent)' }}
+          style={{
+            zIndex: 5,
+            height: "2px",
+            background:
+              "linear-gradient(90deg, transparent, rgba(212,165,32,0.25), rgba(192,132,252,0.2), transparent)",
+          }}
         />
-      </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

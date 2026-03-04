@@ -41,7 +41,7 @@ let baseTemplate = fs.readFileSync(baseTemplatePath, "utf8");
 // Replace the placeholder MAIN-PLACEHOLDER with actual filenames
 baseTemplate = baseTemplate.replace(
   /href="\/themes\/Ramadhan\/static\/assets\/index-PLACEHOLDER\.css"/g,
-  `href="/themes/Ramadhan/static/assets/${cssFile}"`
+  `href="/themes/Ramadhan/static/assets/${cssFile}"`,
 );
 
 baseTemplate = baseTemplate.replace(

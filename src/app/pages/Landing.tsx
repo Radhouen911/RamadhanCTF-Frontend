@@ -1,9 +1,12 @@
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Footer } from "../components/Footer";
+import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
+import { ctfdApi } from "../../services/ctfdApi";
 // The design asset was originally exported by Figma using a custom scheme
 // `figma:asset/...`. Vite doesn't understand that protocol so we need a
 // standard relative path to the image file that actually lives in the
@@ -11,9 +14,54 @@ import { StarField } from "../components/StarField";
 // two levels, since we're inside `src/app/pages`)
 import logo from "../../assets/df7191d06c313a8d3147449d3377c3566c55919a.png";
 
+interface EventStats {
+  totalChallenges: number;
+  totalPoints: number;
+  totalTeams: number;
+}
+
 export function Landing() {
+  const [stats, setStats] = useState<EventStats>({
+    totalChallenges: 0,
+    totalPoints: 0,
+    totalTeams: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        const [challengesRes, teamsRes] = await Promise.all([
+          ctfdApi.getChallenges(),
+          ctfdApi.getTeams(),
+        ]);
+
+        const challenges = challengesRes.data || [];
+        const teams = teamsRes.data || [];
+
+        const totalPoints = challenges.reduce(
+          (sum: number, c: any) => sum + (c.value || 0),
+          0,
+        );
+
+        setStats({
+          totalChallenges: challenges.length,
+          totalPoints: totalPoints,
+          totalTeams: teams.length,
+        });
+      } catch (error) {
+        console.error("Failed to fetch event data:", error);
+        // Fall back to default stats
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEventData();
+  }, []);
+
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-[#060b15] text-white">
+    <div className="relative h-screen flex flex-col overflow-hidden bg-[#060b15] text-white">
       {/* Backgrounds */}
       <StarField />
       <IslamicPattern />
@@ -29,19 +77,22 @@ export function Landing() {
       {/* Gradient Overlay */}
       <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#060b15]/80 via-[#060b15]/40 to-[#060b15] pointer-events-none" />
 
+      {/* Header */}
+      <Header totalPoints={0} solvedCount={0} />
+
       {/* Main Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center py-20">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center py-4">
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
-          className="mb-8"
+          className="mb-2"
         >
           <img
             src={logo}
             alt="Engineers Spark Logo"
-            className="w-32 md:w-40 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+            className="w-20 md:w-24 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
           />
         </motion.div>
 
@@ -50,10 +101,10 @@ export function Landing() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mb-8 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-500/30 bg-amber-500/10 backdrop-blur-md"
+          className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 backdrop-blur-md"
         >
-          <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          <span className="font-[Rajdhani] text-amber-400 text-sm tracking-[3px] font-bold uppercase">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="font-[Rajdhani] text-amber-400 text-xs tracking-[2px] font-bold uppercase">
             Ramadan 2026 EDITION
           </span>
         </motion.div>
@@ -63,7 +114,7 @@ export function Landing() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.4 }}
-          className="font-['Cinzel_Decorative'] text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-wide leading-tight"
+          className="font-['Cinzel_Decorative'] text-3xl md:text-5xl lg:text-6xl font-bold mb-3 tracking-wide leading-tight"
           style={{
             background:
               "linear-gradient(135deg, #fbbf24 0%, #d97706 50%, #fbbf24 100%)",
@@ -80,12 +131,11 @@ export function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="font-[Rajdhani] text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-12 tracking-wider leading-relaxed"
+          className="font-[Rajdhani] text-sm md:text-base text-slate-300 max-w-xl mx-auto mb-6 tracking-wider leading-tight"
         >
           Unveil the secrets hidden within the digital realm.{" "}
           <br className="hidden md:block" />
-          Compete in Web, Crypto, Pwn, Forensics, and Misc challenges under the
-          crescent moon.
+          Compete in challenges under the crescent moon.
         </motion.p>
 
         {/* CTA Button */}
@@ -93,14 +143,15 @@ export function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
+          className="mb-5"
         >
           <Link
             to="/challenges"
-            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-600 to-amber-500 rounded-xl font-[Rajdhani] font-bold text-lg tracking-[2px] text-white uppercase overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(245,158,11,0.4)]"
+            className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 rounded-lg font-[Rajdhani] font-bold text-sm md:text-base tracking-[1.5px] text-white uppercase overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(245,158,11,0.4)]"
           >
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-            <span className="relative z-10">Enter the Arena</span>
-            <ChevronRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
+            <span className="relative z-10">Enter Arena</span>
+            <ChevronRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1" />
           </Link>
         </motion.div>
 
@@ -109,19 +160,33 @@ export function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 border-t border-white/5 pt-12 max-w-4xl w-full"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4 max-w-3xl w-full"
         >
-          {[
-            { label: "Total Prize", value: "$5,000" },
-            { label: "Teams", value: "120+" },
-            { label: "Challenges", value: "25" },
-            { label: "Duration", value: "48H" },
-          ].map((stat, i) => (
+          {(loading
+            ? [
+                { label: "Prize", value: "$5K" },
+                { label: "Teams", value: "--" },
+                { label: "Challenges", value: "--" },
+                { label: "Duration", value: "48H" },
+              ]
+            : [
+                { label: "Prize", value: "$5K" },
+                {
+                  label: "Teams",
+                  value: stats.totalTeams > 0 ? stats.totalTeams.toString() : "0",
+                },
+                {
+                  label: "Challenges",
+                  value: stats.totalChallenges > 0 ? stats.totalChallenges.toString() : "0",
+                },
+                { label: "Duration", value: "48H" },
+              ]
+          ).map((stat, i) => (
             <div key={i} className="flex flex-col items-center">
-              <span className="font-[Rajdhani] text-3xl font-bold text-white mb-1">
+              <span className="font-[Rajdhani] text-xl md:text-2xl font-bold text-white">
                 {stat.value}
               </span>
-              <span className="font-[Rajdhani] text-xs font-bold text-amber-500/60 uppercase tracking-widest">
+              <span className="font-[Rajdhani] text-[10px] font-bold text-amber-500/60 uppercase tracking-wider">
                 {stat.label}
               </span>
             </div>
