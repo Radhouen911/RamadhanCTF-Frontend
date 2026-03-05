@@ -38,14 +38,15 @@ console.log("  CSS:", cssFile);
 // Read the base template
 let baseTemplate = fs.readFileSync(baseTemplatePath, "utf8");
 
-// Replace the placeholder MAIN-PLACEHOLDER with actual filenames
+// Replace ANY existing index-*.css with the new one (using regex to match any hash)
 baseTemplate = baseTemplate.replace(
-  /href="\/themes\/Ramadhan\/static\/assets\/index-PLACEHOLDER\.css"/g,
+  /href="\/themes\/Ramadhan\/static\/assets\/index-[^"]+\.css"/g,
   `href="/themes/Ramadhan/static/assets/${cssFile}"`,
 );
 
+// Replace ANY existing index-*.js with the new one (using regex to match any hash)
 baseTemplate = baseTemplate.replace(
-  /src="\/themes\/Ramadhan\/static\/assets\/index-PLACEHOLDER\.js"/g,
+  /src="\/themes\/Ramadhan\/static\/assets\/index-[^"]+\.js"/g,
   `src="/themes/Ramadhan/static/assets/${jsFile}"`,
 );
 

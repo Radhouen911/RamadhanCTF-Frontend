@@ -1,13 +1,16 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import type { Challenge as ApiChallenge } from "../../services/ctfdApi";
+import { ctfdApi } from "../../services/ctfdApi";
 import { ChallengePanel } from "../components/ChallengePanel";
 import { ChallengeWheel } from "../components/ChallengeWheel";
-import { categories as defaultCategories, type Category, type Challenge as DataChallenge } from "../components/data";
+import {
+  categories as defaultCategories,
+  type Category,
+} from "../components/data";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
-import { ctfdApi } from "../../services/ctfdApi";
-import type { Challenge as ApiChallenge } from "../../services/ctfdApi";
 
 // Initially solved challenges (mock data)
 const INITIAL_SOLVED = new Set([2, 6, 14, 23]);
@@ -495,114 +498,140 @@ export function Challenges() {
           className="relative flex-1 flex flex-col"
           style={{ zIndex: 10, paddingTop: "72px" }}
         >
-        {/* Page title */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.7 }}
-          className="text-center pt-3 pb-1 px-4"
-        >
-          <h1
-            style={{
-              fontFamily: "Cinzel Decorative, serif",
-              fontSize: "clamp(22px, 4vw, 36px)",
-              fontWeight: "700",
-              background:
-                "linear-gradient(135deg, #d4a520 0%, #fbbf24 40%, #c084fc 80%, #d4a520 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              letterSpacing: "3px",
-              textShadow: "none",
-              marginBottom: "6px",
-            }}
-          >
-            Challenges
-          </h1>
-          <p
-            style={{
-              fontFamily: "Rajdhani, sans-serif",
-              fontSize: "12px",
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              color: "rgba(212,165,32,0.45)",
-            }}
-          >
-            Ramadan 1446 AH &nbsp;·&nbsp; Night of Code
-          </p>
-
-          {/* Decorative divider */}
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <div
-              style={{
-                height: "1px",
-                width: "80px",
-                background:
-                  "linear-gradient(90deg, transparent, rgba(212,165,32,0.4))",
-              }}
-            />
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <polygon
-                points="8,1 10,6 15,6 11,10 12.5,15 8,12 3.5,15 5,10 1,6 6,6"
-                fill="rgba(212,165,32,0.6)"
-              />
-            </svg>
-            <div
-              style={{
-                height: "1px",
-                width: "80px",
-                background:
-                  "linear-gradient(90deg, rgba(212,165,32,0.4), transparent)",
-              }}
-            />
-          </div>
-        </motion.div>
-
-        {/* Main layout: wheel + panel */}
-        <div
-          className="flex items-stretch justify-center gap-5"
-          style={{ minHeight: "calc(100vh - 210px)" }}
-        >
-          {/* Wheel column */}
+          {/* Page title */}
           <motion.div
-            className="flex flex-col items-center justify-center gap-4 px-4 py-2"
-            style={{
-              flex: "0 0 auto",
-              width: "min(620px, 100%)",
-              minWidth: 0,
-            }}
-            animate={{ x: selectedCategory ? -38 : 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.7 }}
+            className="text-center pt-3 pb-1 px-4"
           >
-            <ChallengeWheel
-              selectedCategory={selectedCategory}
-              onCategoryClick={handleCategoryClick}
-              solvedCounts={solvedCounts}
-            />
-            <ScoreBar
-              totalPoints={totalPoints}
-              solvedCount={solvedCount}
-              totalChallenges={totalChallenges}
-            />
+            <h1
+              style={{
+                fontFamily: "Cinzel Decorative, serif",
+                fontSize: "clamp(22px, 4vw, 36px)",
+                fontWeight: "700",
+                background:
+                  "linear-gradient(135deg, #d4a520 0%, #fbbf24 40%, #c084fc 80%, #d4a520 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                letterSpacing: "3px",
+                textShadow: "none",
+                marginBottom: "6px",
+              }}
+            >
+              Challenges
+            </h1>
+            <p
+              style={{
+                fontFamily: "Rajdhani, sans-serif",
+                fontSize: "12px",
+                letterSpacing: "4px",
+                textTransform: "uppercase",
+                color: "rgba(212,165,32,0.45)",
+              }}
+            >
+              Ramadan 1446 AH &nbsp;·&nbsp; Night of Code
+            </p>
+
+            {/* Decorative divider */}
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <div
+                style={{
+                  height: "1px",
+                  width: "80px",
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(212,165,32,0.4))",
+                }}
+              />
+              <svg width="16" height="16" viewBox="0 0 16 16">
+                <polygon
+                  points="8,1 10,6 15,6 11,10 12.5,15 8,12 3.5,15 5,10 1,6 6,6"
+                  fill="rgba(212,165,32,0.6)"
+                />
+              </svg>
+              <div
+                style={{
+                  height: "1px",
+                  width: "80px",
+                  background:
+                    "linear-gradient(90deg, rgba(212,165,32,0.4), transparent)",
+                }}
+              />
+            </div>
           </motion.div>
 
-          {/* Challenge panel — slide in with x/opacity only (no width animation) */}
+          {/* Main layout: wheel + panel */}
+          <div
+            className="flex items-stretch justify-center gap-5"
+            style={{ minHeight: "calc(100vh - 210px)" }}
+          >
+            {/* Wheel column */}
+            <motion.div
+              className="flex flex-col items-center justify-center gap-4 px-4 py-2"
+              style={{
+                flex: "0 0 auto",
+                width: "min(620px, 100%)",
+                minWidth: 0,
+              }}
+              animate={{ x: selectedCategory ? -38 : 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <ChallengeWheel
+                selectedCategory={selectedCategory}
+                onCategoryClick={handleCategoryClick}
+                solvedCounts={solvedCounts}
+              />
+              <ScoreBar
+                totalPoints={totalPoints}
+                solvedCount={solvedCount}
+                totalChallenges={totalChallenges}
+              />
+            </motion.div>
+
+            {/* Challenge panel — slide in with x/opacity only (no width animation) */}
+            <AnimatePresence initial={false}>
+              {selectedCategory && selectedCat && (
+                <motion.div
+                  key="desktop-panel"
+                  className="hidden md:block"
+                  style={{
+                    width: "380px",
+                    flexShrink: 0,
+                    height: "calc(100vh - 150px)",
+                    marginTop: "10px",
+                    zIndex: 20,
+                  }}
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 50 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <ChallengePanel
+                    category={selectedCat}
+                    solvedIds={solvedIds}
+                    onSolve={handleSolve}
+                    onClose={() => setSelectedCategory(null)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Mobile panel (bottom sheet style) */}
           <AnimatePresence initial={false}>
             {selectedCategory && selectedCat && (
               <motion.div
-                key="desktop-panel"
-                className="hidden md:block"
+                key="mobile-panel"
+                className="md:hidden fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden"
                 style={{
-                  width: "380px",
-                  flexShrink: 0,
-                  height: "calc(100vh - 150px)",
-                  marginTop: "10px",
-                  zIndex: 20,
+                  zIndex: 50,
+                  maxHeight: "65vh",
                 }}
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ChallengePanel
                   category={selectedCat}
@@ -613,43 +642,17 @@ export function Challenges() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
 
-        {/* Mobile panel (bottom sheet style) */}
-        <AnimatePresence initial={false}>
-          {selectedCategory && selectedCat && (
-            <motion.div
-              key="mobile-panel"
-              className="md:hidden fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden"
-              style={{
-                zIndex: 50,
-                maxHeight: "65vh",
-              }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <ChallengePanel
-                category={selectedCat}
-                solvedIds={solvedIds}
-                onSolve={handleSolve}
-                onClose={() => setSelectedCategory(null)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Bottom decorative bar */}
-        <div
-          className="fixed bottom-0 left-0 right-0 pointer-events-none"
-          style={{
-            zIndex: 5,
-            height: "2px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(212,165,32,0.25), rgba(192,132,252,0.2), transparent)",
-          }}
-        />
+          {/* Bottom decorative bar */}
+          <div
+            className="fixed bottom-0 left-0 right-0 pointer-events-none"
+            style={{
+              zIndex: 5,
+              height: "2px",
+              background:
+                "linear-gradient(90deg, transparent, rgba(212,165,32,0.25), rgba(192,132,252,0.2), transparent)",
+            }}
+          />
         </div>
       )}
       <Footer />

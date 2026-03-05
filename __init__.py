@@ -1,4 +1,4 @@
-from flask import Blueprint, send_from_directory
+from flask import Blueprint, send_from_directory, render_template, request
 import os
 
 def load(app):
@@ -20,26 +20,24 @@ def load(app):
         template_folder='templates'
     )
     
-    # Serve index.html for user-facing routes (GET only)
-    # This allows the React router to handle all client-side navigation
+    # Serve React app for user-facing routes (GET only)
     @ramadhan.route('/', methods=['GET'])
     @ramadhan.route('/login', methods=['GET'])
     @ramadhan.route('/register', methods=['GET'])
     @ramadhan.route('/challenges', methods=['GET'])
-    @ramadhan.route('/challenges/<int:challenge_id>', methods=['GET'])
     @ramadhan.route('/scoreboard', methods=['GET'])
     @ramadhan.route('/teams', methods=['GET'])
     @ramadhan.route('/teams/<int:team_id>', methods=['GET'])
-    @ramadhan.route('/profile', methods=['GET'])
-    @ramadhan.route('/settings', methods=['GET'])
     @ramadhan.route('/users', methods=['GET'])
     @ramadhan.route('/users/<int:user_id>', methods=['GET'])
+    @ramadhan.route('/profile', methods=['GET'])
+    @ramadhan.route('/settings', methods=['GET'])
     def serve_react_app():
         """Serve the React app for user-facing routes (GET requests only)"""
-        return send_from_directory(static_dir, 'index.html')
+        return render_template('base.html')
     
     # Register the blueprint BEFORE other routes
-    # This ensures our routes take precedence over CTFd's default pages
+    # This ensures our routes take precedence
     app.register_blueprint(ramadhan)
     
     return ramadhan

@@ -1,10 +1,11 @@
 import { createBrowserRouter } from "react-router";
-import { Landing } from "./pages/Landing";
 import { Challenges } from "./pages/Challenges";
+import { Landing } from "./pages/Landing";
+import { Login } from "./pages/Login";
+import { Profile } from "./pages/Profile";
+import { Register } from "./pages/Register";
 import { Scoreboard } from "./pages/Scoreboard";
 import { Teams } from "./pages/Teams";
-import { Profile } from "./pages/Profile";
-import { Auth } from "./pages/Auth";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
   },
   {
     path: "/login",
-    Component: Auth,
+    Component: Login,
+  },
+  {
+    path: "/register",
+    Component: Register,
   },
 ]);

@@ -2,17 +2,17 @@ import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
-import { ctfdApi } from "../../services/ctfdApi";
 // The design asset was originally exported by Figma using a custom scheme
 // `figma:asset/...`. Vite doesn't understand that protocol so we need a
 // standard relative path to the image file that actually lives in the
 // repo's `src/assets` directory. (relative to this file you have to climb
 // two levels, since we're inside `src/app/pages`)
-import logo from "../../assets/df7191d06c313a8d3147449d3377c3566c55919a.png";
+
 
 interface EventStats {
   totalChallenges: number;
@@ -90,9 +90,9 @@ export function Landing() {
           className="mb-2"
         >
           <img
-            src={logo}
+            src="/themes/Ramadhan/static/logo.png"
             alt="Engineers Spark Logo"
-            className="w-20 md:w-24 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+            className="w-28 md:w-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
           />
         </motion.div>
 
@@ -173,11 +173,15 @@ export function Landing() {
                 { label: "Prize", value: "$5K" },
                 {
                   label: "Teams",
-                  value: stats.totalTeams > 0 ? stats.totalTeams.toString() : "0",
+                  value:
+                    stats.totalTeams > 0 ? stats.totalTeams.toString() : "0",
                 },
                 {
                   label: "Challenges",
-                  value: stats.totalChallenges > 0 ? stats.totalChallenges.toString() : "0",
+                  value:
+                    stats.totalChallenges > 0
+                      ? stats.totalChallenges.toString()
+                      : "0",
                 },
                 { label: "Duration", value: "48H" },
               ]

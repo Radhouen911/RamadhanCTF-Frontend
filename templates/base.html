@@ -5,17 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#060b15" />
     <meta name="description" content="Ramadan CTF 2026 - Engineers Spark ISETcom" />
+    <link rel="icon" type="image/png" href="/themes/Ramadhan/static/logo.png" />
     <link rel="manifest" href="/themes/Ramadhan/static/manifest.json" />
     
     <title>Ramadan CTF 2026</title>
     
+    <!-- Initialize window.init for frontend -->
+    <script>
+      window.init = {
+        urlRoot: "{{ request.script_root }}",
+        csrfNonce: "{{ Session.nonce }}",
+        userMode: "{{ Configs.user_mode }}",
+        userId: {{ Session.id or 'null' }},
+        userName: "{{ Session.name or '' }}",
+        userEmail: "{{ Session.email or '' }}",
+        userType: "{{ Session.type or '' }}",
+        registrationCodeRequired: {{ 'true' if Configs.registration_code_required else 'false' }},
+        ctfStart: {% if Configs.start %}"{{ Configs.start }}"{% else %}null{% endif %},
+        ctfEnd: {% if Configs.end %}"{{ Configs.end }}"{% else %}null{% endif %},
+        ctfPaused: {{ 'true' if Configs.paused else 'false' }},
+        scoreVisibility: {{ 'true' if Configs.score_visibility != 'hidden' else 'false' }}
+      };
+      
+      // Debug function to help find CSRF tokens
+      window.debugCSRF = function() {
+        console.log('=== CSRF Debug Info ===');
+        console.log('Meta tags with name containing csrf:');
+        document.querySelectorAll('meta[name*="csrf"], meta[name*="CSRF"]').forEach(tag => {
+          console.log(`  ${tag.name}: ${tag.content}`);
+        });
+        console.log('Input fields with name nonce:');
+        document.querySelectorAll('input[name="nonce"], input[name="csrf_token"]').forEach(input => {
+          console.log(`  ${input.name}: ${input.value}`);
+        });
+        
+        // Try to fetch CTFd's actual login page to see if it has CSRF tokens
+        window.fetchCtfdLogin = async function() {
+          try {
+            console.log('Fetching CTFd login page...');
+            const response = await fetch('/login?mode=login', {
+              method: 'GET',
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const html = await response.text();
+              console.log('CTFd login page HTML (first 3000 chars):');
+              console.log(html.substring(0, 3000));
+              
+              // Look for CSRF tokens in the CTFd login page
+              const patterns = [
+                /name="nonce"\s+value="([^"]+)"/,
+                /data-nonce="([^"]+)"/,
+                /csrf[_-]token['"]\s*:\s*['"]([^'"]+)['"]/i,
+                /<meta\s+name="csrf[_-]token"\s+content="([^"]+)"/i
+              ];
+              
+              patterns.forEach((pattern, index) => {
+                const match = html.match(pattern);
+                if (match) {
+                  console.log(`Found CSRF token with pattern ${index + 1}:`, match[1]);
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching CTFd login:', error);
+          }
+        };
+      };
+    </script>
+    
     <!-- Main CSS - synced by build script -->
-    <link rel="stylesheet" href="/themes/Ramadhan/static/assets/index-DKebzkva.css" />
+    <link rel="stylesheet" href="/themes/Ramadhan/static/assets/index-CWHpxwoY.css" />
   </head>
   <body>
     <div id="root"></div>
     
     <!-- Main JS - synced by build script -->
-    <script type="module" src="/themes/Ramadhan/static/assets/index-B8BBCY8J.js"></script>
+    <script type="module" src="/themes/Ramadhan/static/assets/index-CkRBwSVh.js"></script>
   </body>
 </html>

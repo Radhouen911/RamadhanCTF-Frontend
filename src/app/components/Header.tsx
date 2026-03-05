@@ -2,6 +2,7 @@ import {
   Bell,
   ChevronDown,
   Flag,
+  LogOut,
   Menu,
   Star,
   Trophy,
@@ -11,8 +12,9 @@ import {
 } from "lucide-react";
 import type { ElementType } from "react";
 import { useState } from "react";
-import { Link, NavLink } from "react-router";
-import logo from "../../assets/df7191d06c313a8d3147449d3377c3566c55919a.png";
+import { Link, NavLink, useNavigate } from "react-router";
+
+import { useAuth } from "../context/AuthContext";
 
 interface NavItem {
   label: string;
@@ -34,6 +36,18 @@ interface HeaderProps {
 
 export function Header({ totalPoints, solvedCount }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { isAuthenticated, user, logout, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <header
@@ -60,9 +74,9 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
             {/* Landing page logo image */}
-            <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
               <img
-                src={logo}
+                src="/themes/Ramadhan/static/logo.png"
                 alt="Ramadan CTF Logo"
                 className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
               />
@@ -97,132 +111,235 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.label}
-                  to={item.href}
-                  className={({ isActive }) => `
-                    flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
-                  `}
-                  style={({ isActive }) => ({
+          {/* Desktop Nav - Only show when authenticated */}
+          {isAuthenticated && (
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.label}
+                    to={item.href}
+                    className={({ isActive }) => `
+                      flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
+                    `}
+                    style={({ isActive }) => ({
+                      fontFamily: "Rajdhani, sans-serif",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      letterSpacing: "1.5px",
+                      color: isActive ? "#fbbf24" : "rgba(255,255,255,0.6)",
+                      background: isActive
+                        ? "rgba(251,191,36,0.1)"
+                        : "transparent",
+                      border: isActive
+                        ? "1px solid rgba(251,191,36,0.25)"
+                        : "1px solid transparent",
+                      textTransform: "uppercase",
+                    })}
+                  >
+                    <Icon size={14} />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* Right side: Auth or Score + Profile */}
+          <div className="flex items-center gap-3">
+            {loading ? (
+              // Loading state
+              <div className="w-8 h-8 rounded-lg bg-slate-700/50 animate-pulse" />
+            ) : !isAuthenticated ? (
+              // Not authenticated - show Login and Register buttons
+              <>
+                <Link
+                  to="/login"
+                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                  style={{
                     fontFamily: "Rajdhani, sans-serif",
-                    fontSize: "13px",
+                    fontSize: "12px",
                     fontWeight: "600",
                     letterSpacing: "1.5px",
-                    color: isActive ? "#fbbf24" : "rgba(255,255,255,0.6)",
-                    background: isActive
-                      ? "rgba(251,191,36,0.1)"
-                      : "transparent",
-                    border: isActive
-                      ? "1px solid rgba(251,191,36,0.25)"
-                      : "1px solid transparent",
+                    color: "rgba(255,255,255,0.7)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.05)",
                     textTransform: "uppercase",
-                  })}
+                  }}
                 >
-                  <Icon size={14} />
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                  style={{
+                    fontFamily: "Rajdhani, sans-serif",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    letterSpacing: "1.5px",
+                    color: "white",
+                    background: "linear-gradient(135deg, #d97706, #fbbf24)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Register
+                </Link>
+              </>
+            ) : (
+              // Authenticated - show Score badge and Profile
+              <>
+                {/* Score badge */}
+                <div
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: "rgba(251,191,36,0.08)",
+                    border: "1px solid rgba(251,191,36,0.2)",
+                  }}
+                >
+                  <Star size={13} fill="#fbbf24" stroke="none" />
+                  <span
+                    style={{
+                      fontFamily: "Rajdhani, sans-serif",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      color: "#fbbf24",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    {totalPoints.toLocaleString()} pts
+                  </span>
+                  <div
+                    style={{
+                      width: "1px",
+                      height: "12px",
+                      background: "rgba(251,191,36,0.3)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "Rajdhani, sans-serif",
+                      fontSize: "12px",
+                      color: "rgba(251,191,36,0.7)",
+                    }}
+                  >
+                    {solvedCount} solved
+                  </span>
+                </div>
 
-          {/* Right side: Score + Notifications + Profile */}
-          <div className="flex items-center gap-3">
-            {/* Score badge */}
-            <div
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{
-                background: "rgba(251,191,36,0.08)",
-                border: "1px solid rgba(251,191,36,0.2)",
-              }}
-            >
-              <Star size={13} fill="#fbbf24" stroke="none" />
-              <span
-                style={{
-                  fontFamily: "Rajdhani, sans-serif",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  color: "#fbbf24",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {totalPoints.toLocaleString()} pts
-              </span>
-              <div
-                style={{
-                  width: "1px",
-                  height: "12px",
-                  background: "rgba(251,191,36,0.3)",
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: "Rajdhani, sans-serif",
-                  fontSize: "12px",
-                  color: "rgba(251,191,36,0.7)",
-                }}
-              >
-                {solvedCount} solved
-              </span>
-            </div>
+                {/* Notification bell */}
+                <button
+                  className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  <Bell size={15} />
+                  <span
+                    className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                    style={{ background: "#fbbf24" }}
+                  />
+                </button>
 
-            {/* Notification bell */}
-            <button
-              className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors"
-              style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
-                color: "rgba(255,255,255,0.5)",
-              }}
-            >
-              <Bell size={15} />
-              <span
-                className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                style={{ background: "#fbbf24" }}
-              />
-            </button>
+                {/* Profile Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all"
+                    style={{
+                      border: "1px solid rgba(192,132,252,0.2)",
+                      background: "rgba(192,132,252,0.06)",
+                    }}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{
+                        background: "linear-gradient(135deg, #7c3aed, #c084fc)",
+                        fontFamily: "Rajdhani, sans-serif",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        color: "white",
+                      }}
+                    >
+                      {user?.name?.slice(0, 2).toUpperCase() || "U"}
+                    </div>
+                    <span
+                      className="hidden sm:block"
+                      style={{
+                        fontFamily: "Rajdhani, sans-serif",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: "rgba(255,255,255,0.8)",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      {user?.name || "User"}
+                    </span>
+                    <ChevronDown
+                      size={13}
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                    />
+                  </button>
 
-            {/* Profile */}
-            <button
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all"
-              style={{
-                border: "1px solid rgba(192,132,252,0.2)",
-                background: "rgba(192,132,252,0.06)",
-              }}
-            >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, #7c3aed, #c084fc)",
-                  fontFamily: "Rajdhani, sans-serif",
-                  fontSize: "12px",
-                  fontWeight: "700",
-                  color: "white",
-                }}
-              >
-                KH
-              </div>
-              <span
-                className="hidden sm:block"
-                style={{
-                  fontFamily: "Rajdhani, sans-serif",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  color: "rgba(255,255,255,0.8)",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                Khalid
-              </span>
-              <ChevronDown
-                size={13}
-                style={{ color: "rgba(255,255,255,0.4)" }}
-              />
-            </button>
+                  {/* Profile Dropdown Menu */}
+                  {profileOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl border overflow-hidden"
+                      style={{
+                        background: "rgba(6, 11, 21, 0.95)",
+                        backdropFilter: "blur(10px)",
+                        border: "1px solid rgba(212,165,32,0.15)",
+                        zIndex: 1000,
+                      }}
+                    >
+                      <div className="p-3 border-b border-white/10">
+                        <p
+                          style={{
+                            fontFamily: "Rajdhani, sans-serif",
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.7)",
+                            textTransform: "uppercase",
+                            letterSpacing: "1px",
+                          }}
+                        >
+                          {user?.email}
+                        </p>
+                      </div>
+                      <Link
+                        to="/profile"
+                        className="flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                        style={{
+                          fontFamily: "Rajdhani, sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.8)",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <User size={14} />
+                        Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-red-500/10 transition-colors text-red-400 border-t border-white/10"
+                        style={{
+                          fontFamily: "Rajdhani, sans-serif",
+                          fontSize: "13px",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        <LogOut size={14} />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Mobile menu toggle */}
             <button
@@ -238,8 +355,8 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
           </div>
         </div>
 
-        {/* Mobile Nav */}
-        {mobileOpen && (
+        {/* Mobile Nav - Only show when authenticated */}
+        {mobileOpen && isAuthenticated && (
           <div
             className="md:hidden py-3 border-t"
             style={{ borderColor: "rgba(212,165,32,0.15)" }}
