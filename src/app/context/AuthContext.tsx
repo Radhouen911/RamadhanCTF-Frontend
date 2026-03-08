@@ -45,21 +45,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (token) {
       return token;
     }
-    
+
     // Try to get from meta tag
     let metaTag = document.querySelector('meta[name="CSRF-Token"]');
     if (metaTag) {
-      token = metaTag.getAttribute('content');
+      token = metaTag.getAttribute("content");
     }
-    
+
     // Try alternative meta tag names
     if (!token) {
       metaTag = document.querySelector('meta[name="csrf-token"]');
       if (metaTag) {
-        token = metaTag.getAttribute('content');
+        token = metaTag.getAttribute("content");
       }
     }
-    
+
     // Try to extract from form inputs
     if (!token) {
       const nonceInput = document.querySelector('input[name="nonce"]');
@@ -67,18 +67,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         token = (nonceInput as HTMLInputElement).value;
       }
     }
-    
+
     // If still no token, try fetching the current page
     if (!token) {
       try {
         const response = await fetch(window.location.href, {
-          method: 'GET',
-          credentials: 'include'
+          method: "GET",
+          credentials: "include",
         });
-        
+
         if (response.ok) {
           const html = await response.text();
-          
+
           // Try to find nonce input field using string parsing
           let nonceStart = html.indexOf('name="nonce" value="');
           if (nonceStart > -1) {
@@ -87,7 +87,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (valueEnd > valueStart) {
               token = html.substring(valueStart, valueEnd);
               if (token && token.length > 10) {
-                console.log('[AuthContext] Found CSRF token in page HTML:', token.substring(0, 8) + '...');
+                console.log(
+                  "[AuthContext] Found CSRF token in page HTML:",
+                  token.substring(0, 8) + "...",
+                );
               }
             }
           }
@@ -101,7 +104,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (valueEnd > valueStart) {
                 token = html.substring(valueStart, valueEnd);
                 if (token && token.length > 10) {
-                  console.log('[AuthContext] Found CSRF token in data-nonce:', token.substring(0, 8) + '...');
+                  console.log(
+                    "[AuthContext] Found CSRF token in data-nonce:",
+                    token.substring(0, 8) + "...",
+                  );
                 }
               }
             }
@@ -111,28 +117,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!token) {
             nonceStart = html.indexOf('name="csrf-token" content="');
             if (nonceStart > -1) {
-              const valueStart = nonceStart + 'name="csrf-token" content="'.length;
+              const valueStart =
+                nonceStart + 'name="csrf-token" content="'.length;
               const valueEnd = html.indexOf('"', valueStart);
               if (valueEnd > valueStart) {
                 token = html.substring(valueStart, valueEnd);
                 if (token && token.length > 10) {
-                  console.log('[AuthContext] Found CSRF token in meta tag:', token.substring(0, 8) + '...');
+                  console.log(
+                    "[AuthContext] Found CSRF token in meta tag:",
+                    token.substring(0, 8) + "...",
+                  );
                 }
               }
             }
           }
         }
       } catch (error) {
-        console.warn('[AuthContext] Failed to fetch CSRF token:', error);
+        console.warn("[AuthContext] Failed to fetch CSRF token:", error);
       }
     }
-    
+
     // Cache the token if found
     if (token) {
       (window as any).init = (window as any).init || {};
       (window as any).init.csrfNonce = token;
     }
-    
+
     return token;
   };
 
@@ -145,7 +155,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const userData = await ctfdApi.getCurrentUser();
       if (userData.success && userData.data) {
-        setUser(userData.data);
+        // Check if user is admin
+        const isAdmin = await ctfdApi.checkIsAdmin();
+        setUser({ ...userData.data, isAdmin });
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -165,10 +177,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[AuthContext] Login attempt for user:", name);
 
       const nonce = await getCSRFToken();
-      console.log("[AuthContext] CSRF nonce:", nonce ? 'Found' : 'Missing');
+      console.log("[AuthContext] CSRF nonce:", nonce ? "Found" : "Missing");
 
       if (!nonce) {
-        console.error("[AuthContext] No CSRF nonce available! Login will likely fail.");
+        console.error(
+          "[AuthContext] No CSRF nonce available! Login will likely fail.",
+        );
       }
 
       const formData = new URLSearchParams();
@@ -232,10 +246,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[AuthContext] Register attempt for user:", name);
 
       const nonce = await getCSRFToken();
-      console.log("[AuthContext] CSRF nonce for register:", nonce ? 'Found' : 'Missing');
+      console.log(
+        "[AuthContext] CSRF nonce for register:",
+        nonce ? "Found" : "Missing",
+      );
 
       if (!nonce) {
-        console.error("[AuthContext] No CSRF nonce available! Registration will likely fail.");
+        console.error(
+          "[AuthContext] No CSRF nonce available! Registration will likely fail.",
+        );
       }
 
       const formData = new URLSearchParams();

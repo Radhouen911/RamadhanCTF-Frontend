@@ -4,6 +4,7 @@ import {
   Flag,
   LogOut,
   Menu,
+  Shield,
   Star,
   Trophy,
   User,
@@ -143,6 +144,27 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                   </NavLink>
                 );
               })}
+
+              {/* Admin button - only visible to admins */}
+              {user?.isAdmin && (
+                <a
+                  href="/admin"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200"
+                  style={{
+                    fontFamily: "Rajdhani, sans-serif",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    letterSpacing: "1.5px",
+                    color: "rgba(192,132,252,0.9)",
+                    background: "rgba(192,132,252,0.1)",
+                    border: "1px solid rgba(192,132,252,0.25)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <Shield size={14} />
+                  Admin
+                </a>
+              )}
             </nav>
           )}
 
@@ -388,6 +410,27 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                 </NavLink>
               );
             })}
+
+            {/* Admin button - only visible to admins */}
+            {user?.isAdmin && (
+              <a
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-3 rounded-lg mb-1"
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  letterSpacing: "1px",
+                  color: "rgba(192,132,252,0.9)",
+                  background: "rgba(192,132,252,0.08)",
+                  textTransform: "uppercase",
+                }}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Shield size={16} />
+                Admin
+              </a>
+            )}
           </div>
         )}
       </div>

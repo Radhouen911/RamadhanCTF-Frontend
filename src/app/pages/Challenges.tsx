@@ -1,19 +1,106 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import type { Challenge as ApiChallenge } from "../../services/ctfdApi";
+import type { ApiChallenge } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
 import { ChallengePanel } from "../components/ChallengePanel";
 import { ChallengeWheel } from "../components/ChallengeWheel";
-import {
-  categories as defaultCategories,
-  type Category,
-} from "../components/data";
+import type { Category } from "../components/data";
+import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
 
-// Initially solved challenges (mock data)
-const INITIAL_SOLVED = new Set([2, 6, 14, 23]);
+// Note: solved challenges are now fetched from CTFd API
+
+// Default colors and icons for different categories
+const categoryDefaults = [
+  {
+    pattern: /web/i,
+    iconName: "Globe",
+    color: "#60a5fa",
+    darkColor: "#1e3a8a",
+    midColor: "#3b82f6",
+    glowColor: "rgba(96, 165, 250, 0.6)",
+  },
+  {
+    pattern: /crypto/i,
+    iconName: "Lock",
+    color: "#c084fc",
+    darkColor: "#4c1d95",
+    midColor: "#9333ea",
+    glowColor: "rgba(192, 132, 252, 0.6)",
+  },
+  {
+    pattern: /pwn|binary/i,
+    iconName: "Terminal",
+    color: "#f87171",
+    darkColor: "#7f1d1d",
+    midColor: "#dc2626",
+    glowColor: "rgba(248, 113, 113, 0.6)",
+  },
+  {
+    pattern: /forensics?/i,
+    iconName: "Search",
+    color: "#34d399",
+    darkColor: "#064e3b",
+    midColor: "#059669",
+    glowColor: "rgba(52, 211, 153, 0.6)",
+  },
+  {
+    pattern: /rev|reverse/i,
+    iconName: "Eye",
+    color: "#a78bfa",
+    darkColor: "#3c1361",
+    midColor: "#7c3aed",
+    glowColor: "rgba(167, 139, 250, 0.6)",
+  },
+  {
+    pattern: /misc|other/i,
+    iconName: "Sparkles",
+    color: "#22d3ee",
+    darkColor: "#164e63",
+    midColor: "#0891b2",
+    glowColor: "rgba(34, 211, 238, 0.6)",
+  },
+];
+
+// Fallback colors for unknown categories
+const fallbackColors = [
+  {
+    color: "#fb923c",
+    darkColor: "#9a3412",
+    midColor: "#ea580c",
+    glowColor: "rgba(251, 146, 60, 0.6)",
+  },
+  {
+    color: "#a3d977",
+    darkColor: "#365314",
+    midColor: "#65a30d",
+    glowColor: "rgba(163, 217, 119, 0.6)",
+  },
+  {
+    color: "#fbbf24",
+    darkColor: "#78350f",
+    midColor: "#d97706",
+    glowColor: "rgba(251, 191, 36, 0.6)",
+  },
+];
+
+const getCategoryDefaults = (categoryName: string, index: number) => {
+  // Try to match category name with known patterns
+  for (const def of categoryDefaults) {
+    if (def.pattern.test(categoryName)) {
+      return def;
+    }
+  }
+
+  // Use fallback colors cyclically
+  const fallback = fallbackColors[index % fallbackColors.length];
+  return {
+    iconName: "Sparkles",
+    ...fallback,
+  };
+};
 
 // Decorative crescent + lantern SVG for corners
 function CrescentDecor() {
@@ -340,83 +427,77 @@ function ScoreBar({
   );
 }
 
-import { Footer } from "../components/Footer";
-
 export function Challenges() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [solvedIds, setSolvedIds] = useState<Set<number>>(INITIAL_SOLVED);
+  const [solvedIds, setSolvedIds] = useState<Set<number>>(new Set());
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch challenges from CTFd API
-  useEffect(() => {
-    const fetchChallenges = async () => {
-      try {
-        const response = await ctfdApi.getChallenges();
-        const apiChallenges = response.data || [];
+  const fetchChallenges = async () => {
+    try {
+      const response = await ctfdApi.getChallenges();
+      const apiChallenges = response.data || [];
 
-        // Group challenges by category
-        const categoryMap: Record<string, ApiChallenge[]> = {};
-        apiChallenges.forEach((challenge: ApiChallenge) => {
-          const cat = challenge.category || "Misc";
-          if (!categoryMap[cat]) {
-            categoryMap[cat] = [];
-          }
-          categoryMap[cat].push(challenge);
-        });
-
-        // Convert to category format with colors from defaultCategories
-        const newCategories: Category[] = Object.entries(categoryMap).map(
-          ([categoryName, challenges]) => {
-            const defaultCat = defaultCategories.find(
-              (c) => c.name.toLowerCase() === categoryName.toLowerCase(),
-            );
-
-            const id = categoryName.toLowerCase().replace(/\s+/g, "");
-            return {
-              id,
-              name: categoryName,
-              iconName: defaultCat?.iconName || "Sparkles",
-              color: defaultCat?.color || "#22d3ee",
-              darkColor: defaultCat?.darkColor || "#164e63",
-              midColor: defaultCat?.midColor || "#0891b2",
-              glowColor: defaultCat?.glowColor || "rgba(34, 211, 238, 0.6)",
-              challenges: challenges.map((c) => ({
-                id: c.id,
-                name: c.name,
-                points: c.value || 0,
-                difficulty: "Medium" as const,
-                solves: c.solves || 0,
-                solved: c.solved_by_me || false,
-                description: c.description || "",
-                tags: [],
-                hasContainer: false,
-              })),
-            };
-          },
-        );
-
-        setCategories(newCategories);
-
-        // Update solvedIds based on API response
-        const solvedSet = new Set<number>();
-        apiChallenges.forEach((challenge: ApiChallenge) => {
-          if (challenge.solved_by_me) {
-            solvedSet.add(challenge.id);
-          }
-        });
-        if (solvedSet.size > 0) {
-          setSolvedIds(solvedSet);
+      // Group challenges by category
+      const categoryMap: Record<string, ApiChallenge[]> = {};
+      apiChallenges.forEach((challenge: ApiChallenge) => {
+        const cat = challenge.category || "Misc";
+        if (!categoryMap[cat]) {
+          categoryMap[cat] = [];
         }
-      } catch (error) {
-        console.error("Failed to fetch challenges:", error);
-        // Fall back to default categories
-        setCategories(defaultCategories);
-      } finally {
-        setLoading(false);
-      }
-    };
+        categoryMap[cat].push(challenge);
+      });
 
+      // Convert to category format with dynamic colors
+      const newCategories: Category[] = Object.entries(categoryMap).map(
+        ([categoryName, challenges], index) => {
+          const categoryInfo = getCategoryDefaults(categoryName, index);
+
+          const id = categoryName.toLowerCase().replace(/\s+/g, "");
+          return {
+            id,
+            name: categoryName,
+            iconName: categoryInfo.iconName,
+            color: categoryInfo.color,
+            darkColor: categoryInfo.darkColor,
+            midColor: categoryInfo.midColor,
+            glowColor: categoryInfo.glowColor,
+            challenges: challenges.map((c) => ({
+              id: c.id,
+              name: c.name,
+              points: c.value || 0,
+              difficulty: "Medium" as const,
+              solves: c.solves || 0,
+              solved: c.solved_by_me || false,
+              description: c.description || "",
+              tags: [],
+              hasContainer: false,
+            })),
+          };
+        },
+      );
+
+      setCategories(newCategories);
+
+      // Update solvedIds based on API response
+      const solvedSet = new Set<number>();
+      apiChallenges.forEach((challenge: ApiChallenge) => {
+        if (challenge.solved_by_me) {
+          solvedSet.add(challenge.id);
+        }
+      });
+      setSolvedIds(solvedSet);
+    } catch (error) {
+      console.error("Failed to fetch challenges:", error);
+      // Don't fall back to mock data - show empty state or error
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchChallenges();
   }, []);
 
@@ -578,6 +659,7 @@ export function Challenges() {
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
               <ChallengeWheel
+                categories={categories}
                 selectedCategory={selectedCategory}
                 onCategoryClick={handleCategoryClick}
                 solvedCounts={solvedCounts}
@@ -612,6 +694,7 @@ export function Challenges() {
                     solvedIds={solvedIds}
                     onSolve={handleSolve}
                     onClose={() => setSelectedCategory(null)}
+                    onChallengeUpdate={fetchChallenges}
                   />
                 </motion.div>
               )}
@@ -638,6 +721,7 @@ export function Challenges() {
                   solvedIds={solvedIds}
                   onSolve={handleSolve}
                   onClose={() => setSelectedCategory(null)}
+                  onChallengeUpdate={fetchChallenges}
                 />
               </motion.div>
             )}

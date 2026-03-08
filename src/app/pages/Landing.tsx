@@ -13,7 +13,6 @@ import { StarField } from "../components/StarField";
 // repo's `src/assets` directory. (relative to this file you have to climb
 // two levels, since we're inside `src/app/pages`)
 
-
 interface EventStats {
   totalChallenges: number;
   totalPoints: number;

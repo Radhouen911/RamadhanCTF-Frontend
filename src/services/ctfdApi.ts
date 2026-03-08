@@ -12,6 +12,9 @@ interface Challenge {
   solved_by_me: boolean;
   requirements?: number[];
   solves?: number;
+  type?: string;
+  state?: string;
+  max_attempts?: number;
 }
 
 interface User {
@@ -36,31 +39,44 @@ interface ScoreboardEntry {
   place: number;
 }
 
+interface Token {
+  id: number;
+  value: string;
+  description: string;
+  created: string;
+  expiration: string | null;
+}
+
 class CTFdAPI {
   private baseURL = "/api/v1";
 
   private async getCSRFToken(): Promise<string | null> {
     // Check if already cached
     let token = (window as any).init?.csrfNonce;
-    if (token && token.length > 10 && !token.includes('(') && !token.includes('[')) { 
-      console.log('[ctfdApi] Using cached CSRF token, length:', token.length);
+    if (
+      token &&
+      token.length > 10 &&
+      !token.includes("(") &&
+      !token.includes("[")
+    ) {
+      console.log("[ctfdApi] Using cached CSRF token, length:", token.length);
       return token;
     }
-    
+
     // Try to get from meta tag
     let metaTag = document.querySelector('meta[name="CSRF-Token"]');
     if (metaTag) {
-      token = metaTag.getAttribute('content');
+      token = metaTag.getAttribute("content");
     }
-    
+
     // Try alternative meta tag names that CTFd might use
     if (!token) {
       metaTag = document.querySelector('meta[name="csrf-token"]');
       if (metaTag) {
-        token = metaTag.getAttribute('content');
+        token = metaTag.getAttribute("content");
       }
     }
-    
+
     // Try to extract from existing page content (check if CTFd has forms with nonce)
     if (!token) {
       const nonceInput = document.querySelector('input[name="nonce"]');
@@ -68,23 +84,23 @@ class CTFdAPI {
         token = (nonceInput as HTMLInputElement).value;
       }
     }
-    
+
     // If still no token, try fetching the current page to get fresh HTML with CSRF
     if (!token) {
       try {
-        console.log('[ctfdApi] Fetching fresh page for CSRF token...');
+        console.log("[ctfdApi] Fetching fresh page for CSRF token...");
         const response = await fetch(window.location.href, {
-          method: 'GET',
-          credentials: 'include'
+          method: "GET",
+          credentials: "include",
         });
-        
+
         if (response.ok) {
           const html = await response.text();
-          console.log('[ctfdApi] Got fresh HTML, searching for nonce...');
-          
+          console.log("[ctfdApi] Got fresh HTML, searching for nonce...");
+
           // Use simple string parsing instead of regex to avoid pattern matching issues
           let token = null;
-          
+
           // Look for nonce in form input (most common)
           const nonceStart = html.indexOf('name="nonce" value="');
           if (nonceStart > -1) {
@@ -93,11 +109,14 @@ class CTFdAPI {
             if (valueEnd > valueStart) {
               token = html.substring(valueStart, valueEnd);
               if (token.length > 10) {
-                console.log('[ctfdApi] Found nonce in form:', token.substring(0, 8) + '...');
+                console.log(
+                  "[ctfdApi] Found nonce in form:",
+                  token.substring(0, 8) + "...",
+                );
               }
             }
           }
-          
+
           // Try data-nonce attribute if form nonce not found
           if (!token || token.length < 10) {
             const dataNonceStart = html.indexOf('data-nonce="');
@@ -107,12 +126,15 @@ class CTFdAPI {
               if (valueEnd > valueStart) {
                 token = html.substring(valueStart, valueEnd);
                 if (token.length > 10) {
-                  console.log('[ctfdApi] Found data-nonce:', token.substring(0, 8) + '...');
+                  console.log(
+                    "[ctfdApi] Found data-nonce:",
+                    token.substring(0, 8) + "...",
+                  );
                 }
               }
             }
           }
-          
+
           if (token && token.length > 10) {
             // Cache the token
             (window as any).init = (window as any).init || {};
@@ -121,17 +143,17 @@ class CTFdAPI {
           }
         }
       } catch (error) {
-        console.warn('[ctfdApi] Failed to fetch page for CSRF token:', error);
+        console.warn("[ctfdApi] Failed to fetch page for CSRF token:", error);
       }
     }
-    
+
     // Cache the token if found
     if (token) {
       (window as any).init = (window as any).init || {};
       (window as any).init.csrfNonce = token;
     }
-    
-    console.log('[ctfdApi] CSRF token:', token ? 'Found' : 'Missing');
+
+    console.log("[ctfdApi] CSRF token:", token ? "Found" : "Missing");
     return token;
   }
 
@@ -153,9 +175,9 @@ class CTFdAPI {
       headers["X-CSRFToken"] = csrfToken;
     }
 
-    console.log(`[ctfdApi] ${options.method || 'GET'} ${endpoint}`, { 
+    console.log(`[ctfdApi] ${options.method || "GET"} ${endpoint}`, {
       hasCSRF: !!csrfToken,
-      headers: Object.keys(headers)
+      headers: Object.keys(headers),
     });
 
     try {
@@ -166,7 +188,9 @@ class CTFdAPI {
       });
 
       if (!response.ok) {
-        console.error(`[ctfdApi] Request failed: ${response.status} ${response.statusText}`);
+        console.error(
+          `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
+        );
         throw new Error(`API request failed: ${response.status}`);
       }
 
@@ -230,6 +254,52 @@ class CTFdAPI {
   async getConfig(): Promise<CTFdResponse<any>> {
     return this.request("/configs");
   }
+
+  // Admin check
+  async checkIsAdmin(): Promise<boolean> {
+    try {
+      // Try to access an admin-only endpoint
+      const response = await fetch("/admin/statistics", {
+        method: "GET",
+        credentials: "include",
+        redirect: "manual", // Don't follow redirects
+      });
+      // If we get 200, user is admin
+      // If we get 302 (redirect to login), user is not admin
+      // If we get 403, user is not admin
+      return response.status === 200;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Tokens
+  async getTokens(): Promise<CTFdResponse<Token[]>> {
+    return this.request<Token[]>("/tokens");
+  }
+
+  async generateToken(data: {
+    description: string;
+    expiration: string | null;
+  }): Promise<CTFdResponse<Token>> {
+    const nonce = await this.getCSRFToken();
+    return this.request<Token>("/tokens", {
+      method: "POST",
+      body: JSON.stringify({
+        ...data,
+        nonce: nonce,
+      }),
+    });
+  }
+
+  async deleteToken(id: number): Promise<CTFdResponse<any>> {
+    const nonce = await this.getCSRFToken();
+    return this.request(`/tokens/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ nonce: nonce }),
+    });
+  }
 }
 
 export const ctfdApi = new CTFdAPI();
+export type { Challenge as ApiChallenge, ScoreboardEntry, Team, Token, User };
