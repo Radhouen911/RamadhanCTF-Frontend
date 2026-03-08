@@ -14,6 +14,7 @@ import {
 import type { ElementType } from "react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
+import logoImg from "../../assets/logo.png";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -77,7 +78,7 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
             {/* Landing page logo image */}
             <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
               <img
-                src="/themes/Ramadhan/static/logo.png"
+                src={logoImg}
                 alt="Ramadan CTF Logo"
                 className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
               />

@@ -17,6 +17,9 @@ export default defineConfig({
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ["**/*.svg", "**/*.csv"],
 
+  // Set base path for CTFd theme
+  base: "/themes/Ramadhan/static/",
+
   // Build configuration for CTFd theme deployment
   build: {
     outDir: "static", // Output to static/ for CTFd

@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import type { LucideProps } from "lucide-react";
 import {
   ChevronDown,
@@ -17,9 +18,10 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ctfdApi } from "../../services/ctfdApi";
 import type { Category, Challenge } from "./data";
 
@@ -32,24 +34,6 @@ const iconMap: Record<string, IconFC> = {
   Search: Search as IconFC,
   Eye: Eye as IconFC,
   Sparkles: Sparkles as IconFC,
-};
-
-const difficultyConfig = {
-  Easy: {
-    color: "#34d399",
-    bg: "rgba(52,211,153,0.12)",
-    border: "rgba(52,211,153,0.25)",
-  },
-  Medium: {
-    color: "#fbbf24",
-    bg: "rgba(251,191,36,0.12)",
-    border: "rgba(251,191,36,0.25)",
-  },
-  Hard: {
-    color: "#f87171",
-    bg: "rgba(248,113,113,0.12)",
-    border: "rgba(248,113,113,0.25)",
-  },
 };
 
 interface ChallengePanelProps {
@@ -81,7 +65,6 @@ function ChallengeCard({
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const diff = difficultyConfig[challenge.difficulty];
 
   const [containerStatus, setContainerStatus] = useState<
     "idle" | "spawning" | "active"
@@ -91,6 +74,36 @@ function ChallengeCard({
     port: number;
   } | null>(null);
 
+  // Parse and sanitize markdown/HTML description
+  const sanitizedDescription = useMemo(() => {
+    console.log("[ChallengePanel] Processing challenge:", challenge.name);
+    console.log(
+      "[ChallengePanel] Description length:",
+      challenge.description?.length || 0,
+    );
+    console.log("[ChallengePanel] Description content:", challenge.description);
+    if (!challenge.description) {
+      console.warn(
+        "[ChallengePanel] No description for challenge:",
+        challenge.name,
+      );
+      return "";
+    }
+    try {
+      // Try to parse as markdown first
+      const html = marked.parse(challenge.description);
+      console.log("[ChallengePanel] Parsed HTML:", html);
+      // Sanitize HTML to prevent XSS
+      const sanitized = DOMPurify.sanitize(html as string);
+      console.log("[ChallengePanel] Sanitized HTML:", sanitized);
+      return sanitized;
+    } catch (error) {
+      console.error("[ChallengePanel] Error parsing description:", error);
+      // Fallback to plain text
+      return challenge.description;
+    }
+  }, [challenge.description]);
+
   const handleFlagSubmit = async () => {
     if (!flagInput.trim() || submitting) return;
 
@@ -99,14 +112,31 @@ function ChallengeCard({
 
     try {
       const response = await ctfdApi.submitFlag(challenge.id, flagInput.trim());
+      console.log("[ChallengePanel] Submit response:", response);
 
+      // CTFd returns success: true/false in the response
       if (response.success) {
-        setSubmitMessage({ type: "success", text: "Correct flag! Well done!" });
-        setFlagInput("");
-        setShowFlag(false);
-        onSolve(); // Update local state
-        if (onChallengeUpdate) {
-          onChallengeUpdate(); // Refresh challenges from API
+        // Check if the data contains status or if success means correct
+        const status = response.data?.status;
+        const isCorrect =
+          status === "correct" || response.data?.data?.status === "correct";
+
+        if (isCorrect) {
+          setSubmitMessage({
+            type: "success",
+            text: response.data?.message || "Correct flag! Well done!",
+          });
+          setFlagInput("");
+          setShowFlag(false);
+          onSolve(); // Update local state
+          if (onChallengeUpdate) {
+            onChallengeUpdate(); // Refresh challenges from API
+          }
+        } else {
+          setSubmitMessage({
+            type: "error",
+            text: response.data?.message || "Incorrect flag. Try again!",
+          });
         }
       } else {
         setSubmitMessage({
@@ -194,22 +224,6 @@ function ChallengeCard({
           <span
             style={{
               fontFamily: "Rajdhani, sans-serif",
-              fontSize: "10px",
-              fontWeight: "700",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              color: diff.color,
-              background: diff.bg,
-              border: `1px solid ${diff.border}`,
-              borderRadius: "6px",
-              padding: "2px 7px",
-            }}
-          >
-            {challenge.difficulty}
-          </span>
-          <span
-            style={{
-              fontFamily: "Rajdhani, sans-serif",
               fontSize: "13px",
               fontWeight: "700",
               color: categoryColor,
@@ -239,7 +253,8 @@ function ChallengeCard({
         }}
       >
         <div className="px-4 py-3">
-          <p
+          <div
+            className="challenge-description"
             style={{
               fontFamily: "Rajdhani, sans-serif",
               fontSize: "13px",
@@ -247,9 +262,8 @@ function ChallengeCard({
               lineHeight: "1.6",
               marginBottom: "12px",
             }}
-          >
-            {challenge.description}
-          </p>
+            dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+          />
 
           <div className="flex flex-wrap gap-1.5 mb-3">
             {challenge.tags.map((tag) => (

@@ -19,8 +19,8 @@ const staticIndex = fs.readFileSync(staticIndexPath, "utf8");
 
 // Extract JS and CSS filenames using regex
 // Vite outputs hashed files like: index-abc123def.js and index-xyz789.css
-const jsMatch = staticIndex.match(/src="\/assets\/(index-[^"]+\.js)"/);
-const cssMatch = staticIndex.match(/href="\/assets\/(index-[^"]+\.css)"/);
+const jsMatch = staticIndex.match(/src="[^"]*\/assets\/(index-[^"]+\.js)"/);
+const cssMatch = staticIndex.match(/href="[^"]*\/assets\/(index-[^"]+\.css)"/);
 
 if (!jsMatch || !cssMatch) {
   console.error("❌ Could not find asset filenames in static/index.html");

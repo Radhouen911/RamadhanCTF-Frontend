@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import logoImg from "../../assets/logo.png";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
@@ -89,7 +90,7 @@ export function Landing() {
           className="mb-2"
         >
           <img
-            src="/themes/Ramadhan/static/logo.png"
+            src={logoImg}
             alt="Engineers Spark Logo"
             className="w-28 md:w-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
           />

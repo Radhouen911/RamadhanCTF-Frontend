@@ -178,6 +178,7 @@ class CTFdAPI {
     console.log(`[ctfdApi] ${options.method || "GET"} ${endpoint}`, {
       hasCSRF: !!csrfToken,
       headers: Object.keys(headers),
+      url: url,
     });
 
     try {
@@ -188,10 +189,22 @@ class CTFdAPI {
       });
 
       if (!response.ok) {
-        console.error(
-          `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
+        // Try to get error details from response body
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.error(
+            `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
+            errorData,
+          );
+        } catch {
+          console.error(
+            `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
+          );
+        }
+        throw new Error(
+          `API request failed: ${response.status}${errorData ? ": " + JSON.stringify(errorData) : ""}`,
         );
-        throw new Error(`API request failed: ${response.status}`);
       }
 
       const data = await response.json();
@@ -216,13 +229,13 @@ class CTFdAPI {
     challengeId: number,
     submission: string,
   ): Promise<CTFdResponse<any>> {
-    const nonce = await this.getCSRFToken();
+    console.log("[ctfdApi] Submitting flag for challenge:", challengeId);
+    console.log("[ctfdApi] Submission value:", submission);
     return this.request("/challenges/attempt", {
       method: "POST",
       body: JSON.stringify({
         challenge_id: challengeId,
         submission: submission,
-        nonce: nonce,
       }),
     });
   }

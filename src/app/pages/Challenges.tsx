@@ -438,10 +438,36 @@ export function Challenges() {
     try {
       const response = await ctfdApi.getChallenges();
       const apiChallenges = response.data || [];
+      console.log("[Challenges] Raw API response:", response);
+      console.log("[Challenges] Challenges count:", apiChallenges.length);
+      if (apiChallenges.length > 0) {
+        console.log("[Challenges] First challenge sample:", apiChallenges[0]);
+      }
+
+      // Fetch individual challenge details to get full descriptions
+      const detailedChallenges = await Promise.all(
+        apiChallenges.map(async (challenge: ApiChallenge) => {
+          try {
+            const detailResponse = await ctfdApi.getChallenge(challenge.id);
+            console.log(
+              `[Challenges] Details for ${challenge.name}:`,
+              detailResponse.data,
+            );
+            return detailResponse.data;
+          } catch (error) {
+            console.error(
+              `[Challenges] Failed to fetch details for challenge ${challenge.id}:`,
+              error,
+            );
+            // Return original challenge if detail fetch fails
+            return challenge;
+          }
+        }),
+      );
 
       // Group challenges by category
       const categoryMap: Record<string, ApiChallenge[]> = {};
-      apiChallenges.forEach((challenge: ApiChallenge) => {
+      detailedChallenges.forEach((challenge: ApiChallenge) => {
         const cat = challenge.category || "Misc";
         if (!categoryMap[cat]) {
           categoryMap[cat] = [];
@@ -467,7 +493,6 @@ export function Challenges() {
               id: c.id,
               name: c.name,
               points: c.value || 0,
-              difficulty: "Medium" as const,
               solves: c.solves || 0,
               solved: c.solved_by_me || false,
               description: c.description || "",
@@ -508,8 +533,7 @@ export function Challenges() {
   const handleSolve = (challengeId: number) => {
     setSolvedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(challengeId)) next.delete(challengeId);
-      else next.add(challengeId);
+      next.add(challengeId);
       return next;
     });
   };
