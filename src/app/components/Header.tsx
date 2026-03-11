@@ -28,15 +28,14 @@ const navItems: NavItem[] = [
   { label: "Challenges", icon: Flag, href: "/challenges" },
   { label: "Scoreboard", icon: Trophy, href: "/scoreboard" },
   { label: "Teams", icon: Users, href: "/teams" },
-  { label: "Profile", icon: User, href: "/profile" },
 ];
 
 interface HeaderProps {
-  totalPoints: number;
-  solvedCount: number;
+  totalPoints?: number;
+  solvedCount?: number;
 }
 
-export function Header({ totalPoints, solvedCount }: HeaderProps) {
+export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { isAuthenticated, user, logout, loading } = useAuth();
@@ -330,6 +329,21 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                           {user?.email}
                         </p>
                       </div>
+                      <Link
+                        to="/team"
+                        className="flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                        style={{
+                          fontFamily: "Rajdhani, sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.8)",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <Users size={14} />
+                        Team
+                      </Link>
                       <Link
                         to="/profile"
                         className="flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors"

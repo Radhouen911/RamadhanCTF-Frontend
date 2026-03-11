@@ -1,7 +1,7 @@
-import { Eye, EyeOff, Key, Lock, Mail, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { Footer } from "../components/Footer";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
@@ -17,7 +17,19 @@ export function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, isAuthenticated, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#060b15]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-400" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -61,7 +73,7 @@ export function Register() {
           <div className="text-center mb-8">
             <Link to="/" className="inline-block mb-4">
               <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto border border-amber-500/30">
-                <Key className="w-6 h-6 text-amber-500" />
+                <User className="w-6 h-6 text-amber-500" />
               </div>
             </Link>
             <h2 className="font-['Cinzel_Decorative'] text-3xl font-bold text-white mb-2">

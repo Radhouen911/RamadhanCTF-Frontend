@@ -114,7 +114,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         return response;
       }
-      throw new Error("Registration failed. Please check your details and try again.");
+      throw new Error(
+        "Registration failed. Please check your details and try again.",
+      );
     } catch (error) {
       console.error("[AuthContext] Register error:", error);
       throw error;

@@ -27,6 +27,7 @@ def load(app):
     @ramadhan.route('/challenges', methods=['GET'])
     @ramadhan.route('/scoreboard', methods=['GET'])
     @ramadhan.route('/teams', methods=['GET'])
+    @ramadhan.route('/team', methods=['GET'])
     @ramadhan.route('/teams/<int:team_id>', methods=['GET'])
     @ramadhan.route('/users', methods=['GET'])
     @ramadhan.route('/users/<int:user_id>', methods=['GET'])

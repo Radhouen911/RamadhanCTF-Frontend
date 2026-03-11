@@ -142,14 +142,14 @@ function ChallengeCard({
   };
 
   const handleSpawnContainer = () => {
-    setContainerStatus("spawning");
-    setTimeout(() => {
-      setContainerStatus("active");
-      setContainerInfo({
-        ip: "10.10.14.23",
-        port: Math.floor(Math.random() * 1000) + 3000,
-      });
-    }, 2000);
+    // Container spawning requires a CTFd container plugin (e.g. CTFd-Whale).
+    // Without a backend plugin, we cannot provision real containers.
+    setContainerStatus("idle");
+    setContainerInfo(null);
+    alert(
+      "Container support is not available on this CTFd instance.\n" +
+        "Please contact an admin if this challenge requires a container.",
+    );
   };
 
   return (
