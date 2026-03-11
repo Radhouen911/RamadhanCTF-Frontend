@@ -12,16 +12,12 @@ export function Register() {
     name: "",
     email: "",
     password: "",
-    registrationCode: "",
   });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuth();
-
-  // Check if registration code is required from CTFd config
-  const isRegistrationCodeRequired = window.init?.registrationCodeRequired || false;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -37,17 +33,7 @@ export function Register() {
     setLoading(true);
 
     try {
-      // Validate required registration code
-      if (isRegistrationCodeRequired && !formData.registrationCode.trim()) {
-        throw new Error("Registration code is required");
-      }
-
-      await register(
-        formData.name,
-        formData.email,
-        formData.password,
-        formData.registrationCode.trim() || undefined,
-      );
+      await register(formData.name, formData.email, formData.password);
       navigate("/");
     } catch (err) {
       setError(
@@ -163,47 +149,6 @@ export function Register() {
                 </button>
               </div>
             </div>
-
-            {/* Registration Code (Conditional) */}
-            {isRegistrationCodeRequired && (
-              <div className="space-y-1">
-                <label className="text-xs font-[Rajdhani] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                  Registration Code
-                </label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    name="registrationCode"
-                    value={formData.registrationCode}
-                    onChange={handleChange}
-                    placeholder="Enter registration code"
-                    className="w-full bg-black/20 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono text-sm"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* If registration code is not required but admin wants to allow optional codes */}
-            {!isRegistrationCodeRequired && (
-              <div className="space-y-1">
-                <label className="text-xs font-[Rajdhani] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                  Registration Code (Optional)
-                </label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    name="registrationCode"
-                    value={formData.registrationCode}
-                    onChange={handleChange}
-                    placeholder="If you have one"
-                    className="w-full bg-black/20 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono text-sm"
-                  />
-                </div>
-              </div>
-            )}
 
             <button
               type="submit"

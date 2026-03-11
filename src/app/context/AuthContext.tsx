@@ -14,6 +14,7 @@ interface User {
   score?: number;
   place?: number;
   isAdmin?: boolean;
+  team_id?: number | null;
 }
 
 interface AuthContextType {
@@ -33,118 +34,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isDev = (import.meta as any).env?.DEV === true;
+const debugLog = (...args: unknown[]) => {
+  if (isDev) {
+    console.log(...args);
+  }
+};
+
+const debugWarn = (...args: unknown[]) => {
+  if (isDev) {
+    console.warn(...args);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Helper function to get CSRF token
-  const getCSRFToken = async (): Promise<string | null> => {
-    // Check if already cached
-    let token = (window as any).init?.csrfNonce;
-    if (token) {
-      return token;
-    }
-
-    // Try to get from meta tag
-    let metaTag = document.querySelector('meta[name="CSRF-Token"]');
-    if (metaTag) {
-      token = metaTag.getAttribute("content");
-    }
-
-    // Try alternative meta tag names
-    if (!token) {
-      metaTag = document.querySelector('meta[name="csrf-token"]');
-      if (metaTag) {
-        token = metaTag.getAttribute("content");
-      }
-    }
-
-    // Try to extract from form inputs
-    if (!token) {
-      const nonceInput = document.querySelector('input[name="nonce"]');
-      if (nonceInput) {
-        token = (nonceInput as HTMLInputElement).value;
-      }
-    }
-
-    // If still no token, try fetching the current page
-    if (!token) {
-      try {
-        const response = await fetch(window.location.href, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const html = await response.text();
-
-          // Try to find nonce input field using string parsing
-          let nonceStart = html.indexOf('name="nonce" value="');
-          if (nonceStart > -1) {
-            const valueStart = nonceStart + 'name="nonce" value="'.length;
-            const valueEnd = html.indexOf('"', valueStart);
-            if (valueEnd > valueStart) {
-              token = html.substring(valueStart, valueEnd);
-              if (token && token.length > 10) {
-                console.log(
-                  "[AuthContext] Found CSRF token in page HTML:",
-                  token.substring(0, 8) + "...",
-                );
-              }
-            }
-          }
-
-          // Try data-nonce attribute if not found
-          if (!token) {
-            nonceStart = html.indexOf('data-nonce="');
-            if (nonceStart > -1) {
-              const valueStart = nonceStart + 'data-nonce="'.length;
-              const valueEnd = html.indexOf('"', valueStart);
-              if (valueEnd > valueStart) {
-                token = html.substring(valueStart, valueEnd);
-                if (token && token.length > 10) {
-                  console.log(
-                    "[AuthContext] Found CSRF token in data-nonce:",
-                    token.substring(0, 8) + "...",
-                  );
-                }
-              }
-            }
-          }
-
-          // Try csrf_token in meta tag if not found
-          if (!token) {
-            nonceStart = html.indexOf('name="csrf-token" content="');
-            if (nonceStart > -1) {
-              const valueStart =
-                nonceStart + 'name="csrf-token" content="'.length;
-              const valueEnd = html.indexOf('"', valueStart);
-              if (valueEnd > valueStart) {
-                token = html.substring(valueStart, valueEnd);
-                if (token && token.length > 10) {
-                  console.log(
-                    "[AuthContext] Found CSRF token in meta tag:",
-                    token.substring(0, 8) + "...",
-                  );
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.warn("[AuthContext] Failed to fetch CSRF token:", error);
-      }
-    }
-
-    // Cache the token if found
-    if (token) {
-      (window as any).init = (window as any).init || {};
-      (window as any).init.csrfNonce = token;
-    }
-
-    return token;
-  };
 
   // Check authentication status on mount
   useEffect(() => {
@@ -153,18 +60,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const userData = await ctfdApi.getCurrentUser();
-      if (userData.success && userData.data) {
-        // Check if user is admin
-        const isAdmin = await ctfdApi.checkIsAdmin();
-        setUser({ ...userData.data, isAdmin });
+      const userData = await ctfdApi.checkAuth();
+      if (userData) {
+        setUser(userData);
         setIsAuthenticated(true);
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error("Auth check failed:", error);
+      // 403 is expected when not logged in — not a real error
+      debugWarn("Auth check failed (expected when logged out):", error);
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -174,62 +80,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (name: string, password: string) => {
     try {
-      console.log("[AuthContext] Login attempt for user:", name);
-
-      const nonce = await getCSRFToken();
-      console.log("[AuthContext] CSRF nonce:", nonce ? "Found" : "Missing");
-
-      if (!nonce) {
-        console.error(
-          "[AuthContext] No CSRF nonce available! Login will likely fail.",
-        );
-      }
-
-      const formData = new URLSearchParams();
-      formData.append("name", name);
-      formData.append("password", password);
-      if (nonce) {
-        formData.append("nonce", nonce);
-      }
-
-      console.log("[AuthContext] Submitting login form with nonce:", nonce);
-
-      const loginHeaders: Record<string, string> = {
-        "Content-Type": "application/x-www-form-urlencoded",
-      };
-
-      // Add CSRF nonce as headers too
-      if (nonce) {
-        loginHeaders["CSRF-Token"] = nonce;
-        loginHeaders["X-CSRF-Token"] = nonce;
-      }
-
-      const response = await fetch("/login", {
-        method: "POST",
-        headers: loginHeaders,
-        body: formData,
-        credentials: "include",
-      });
-
-      console.log("[AuthContext] Login response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-
-      // Wait for session to be established
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Re-check auth to get full user data
-      const userData = await ctfdApi.getCurrentUser();
-      if (userData.success && userData.data) {
-        setUser(userData.data);
+      const response = await ctfdApi.login(name, password);
+      if (response.success && response.data) {
+        const userData = await ctfdApi.checkAuth();
+        setUser(userData || response.data);
         setIsAuthenticated(true);
-        console.log("[AuthContext] Login successful");
-        return userData;
-      } else {
-        throw new Error("Failed to load user data after login");
+        debugLog("[AuthContext] Login successful");
+        return response;
       }
+      throw new Error("Invalid username or password.");
     } catch (error) {
       console.error("[AuthContext] Login error:", error);
       throw error;
@@ -243,75 +102,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     registrationCode?: string,
   ) => {
     try {
-      console.log("[AuthContext] Register attempt for user:", name);
-
-      const nonce = await getCSRFToken();
-      console.log(
-        "[AuthContext] CSRF nonce for register:",
-        nonce ? "Found" : "Missing",
+      const response = await ctfdApi.register(
+        name,
+        email,
+        password,
+        registrationCode,
       );
-
-      if (!nonce) {
-        console.error(
-          "[AuthContext] No CSRF nonce available! Registration will likely fail.",
-        );
-      }
-
-      const formData = new URLSearchParams();
-      formData.append("name", name);
-      formData.append("email", email);
-      formData.append("password", password);
-      if (registrationCode) {
-        formData.append("registration_code", registrationCode);
-      }
-      if (nonce) {
-        formData.append("nonce", nonce);
-      }
-
-      const registerHeaders: Record<string, string> = {
-        "Content-Type": "application/x-www-form-urlencoded",
-      };
-
-      // Add CSRF nonce as headers too
-      if (nonce) {
-        registerHeaders["CSRF-Token"] = nonce;
-        registerHeaders["X-CSRF-Token"] = nonce;
-      }
-
-      const response = await fetch("/register", {
-        method: "POST",
-        headers: registerHeaders,
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Registration failed");
-      }
-
-      // Wait for session to be established
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Re-check auth to get full user data
-      const userData = await ctfdApi.getCurrentUser();
-      if (userData.success && userData.data) {
-        setUser(userData.data);
+      if (response.success && response.data) {
+        const userData = await ctfdApi.checkAuth();
+        setUser(userData || response.data);
         setIsAuthenticated(true);
-        return userData;
-      } else {
-        throw new Error("Failed to load user data after registration");
+        return response;
       }
+      throw new Error("Registration failed. Please check your details and try again.");
     } catch (error) {
+      console.error("[AuthContext] Register error:", error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await fetch("/logout", {
-        method: "GET",
-        credentials: "include",
-      });
+      await ctfdApi.logout();
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {

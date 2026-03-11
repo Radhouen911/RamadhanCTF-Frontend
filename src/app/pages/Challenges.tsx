@@ -438,21 +438,12 @@ export function Challenges() {
     try {
       const response = await ctfdApi.getChallenges();
       const apiChallenges = response.data || [];
-      console.log("[Challenges] Raw API response:", response);
-      console.log("[Challenges] Challenges count:", apiChallenges.length);
-      if (apiChallenges.length > 0) {
-        console.log("[Challenges] First challenge sample:", apiChallenges[0]);
-      }
 
       // Fetch individual challenge details to get full descriptions
       const detailedChallenges = await Promise.all(
         apiChallenges.map(async (challenge: ApiChallenge) => {
           try {
             const detailResponse = await ctfdApi.getChallenge(challenge.id);
-            console.log(
-              `[Challenges] Details for ${challenge.name}:`,
-              detailResponse.data,
-            );
             return detailResponse.data;
           } catch (error) {
             console.error(

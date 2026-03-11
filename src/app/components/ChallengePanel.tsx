@@ -76,27 +76,14 @@ function ChallengeCard({
 
   // Parse and sanitize markdown/HTML description
   const sanitizedDescription = useMemo(() => {
-    console.log("[ChallengePanel] Processing challenge:", challenge.name);
-    console.log(
-      "[ChallengePanel] Description length:",
-      challenge.description?.length || 0,
-    );
-    console.log("[ChallengePanel] Description content:", challenge.description);
     if (!challenge.description) {
-      console.warn(
-        "[ChallengePanel] No description for challenge:",
-        challenge.name,
-      );
       return "";
     }
     try {
       // Try to parse as markdown first
       const html = marked.parse(challenge.description);
-      console.log("[ChallengePanel] Parsed HTML:", html);
       // Sanitize HTML to prevent XSS
-      const sanitized = DOMPurify.sanitize(html as string);
-      console.log("[ChallengePanel] Sanitized HTML:", sanitized);
-      return sanitized;
+      return DOMPurify.sanitize(html as string);
     } catch (error) {
       console.error("[ChallengePanel] Error parsing description:", error);
       // Fallback to plain text
@@ -112,7 +99,6 @@ function ChallengeCard({
 
     try {
       const response = await ctfdApi.submitFlag(challenge.id, flagInput.trim());
-      console.log("[ChallengePanel] Submit response:", response);
 
       // CTFd returns success: true/false in the response
       if (response.success) {
