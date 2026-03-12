@@ -4,6 +4,7 @@ node_modules
 .pnp.js
 oldsetup.sh
 setup.sh
+correct.sh
 setup.env
 worker-join.txt
 # testing

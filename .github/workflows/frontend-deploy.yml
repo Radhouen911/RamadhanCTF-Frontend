@@ -1,0 +1,83 @@
+name: Deploy Frontend Theme
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy Ramadhan theme
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf "%s\n" "$EC2_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Add EC2 host to known_hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+        run: |
+          set -euo pipefail
+          ssh-keyscan -p "${EC2_PORT:-22}" -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy to manager
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+          FRONTEND_REPO: ${{ vars.FRONTEND_REPO || 'git@github.com:Radhouen911/RamadhanCTF-Frontend.git' }}
+          FRONTEND_DIR: ${{ vars.FRONTEND_DIR || '/tmp/RamadhanCTF-Frontend' }}
+          CTFD_DIR: ${{ vars.CTFD_DIR || '/opt/CTFd' }}
+          THEME_DIR: ${{ vars.THEME_DIR || '/opt/CTFd/CTFd/themes/Ramadhan' }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          ssh -p "${EC2_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+            "FRONTEND_REPO='${FRONTEND_REPO}' FRONTEND_DIR='${FRONTEND_DIR}' CTFD_DIR='${CTFD_DIR}' THEME_DIR='${THEME_DIR}' DEPLOY_BRANCH='${DEPLOY_BRANCH}' bash -s" << 'REMOTE'
+          set -euo pipefail
+
+          if [[ ! -d "${FRONTEND_DIR}/.git" ]]; then
+            git clone "${FRONTEND_REPO}" "${FRONTEND_DIR}"
+          fi
+
+          cd "${FRONTEND_DIR}"
+          git fetch origin "${DEPLOY_BRANCH}"
+          git checkout "${DEPLOY_BRANCH}"
+          git pull --ff-only origin "${DEPLOY_BRANCH}"
+
+          npm ci --silent
+          npm run build
+
+          sudo mkdir -p "${THEME_DIR}/static" "${THEME_DIR}/templates"
+          sudo rsync -a --delete "${FRONTEND_DIR}/static/" "${THEME_DIR}/static/"
+          sudo rsync -a --delete "${FRONTEND_DIR}/templates/" "${THEME_DIR}/templates/"
+
+          if [[ -f "${FRONTEND_DIR}/__init__.py" ]]; then
+            sudo cp "${FRONTEND_DIR}/__init__.py" "${THEME_DIR}/__init__.py"
+          fi
+
+          cd "${CTFD_DIR}"
+          sudo docker compose restart ctfd
+          REMOTE
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Theme deployed to manager and CTFd restarted"
