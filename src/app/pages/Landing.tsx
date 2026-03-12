@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import logoImg from "../../assets/logo.png";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
@@ -12,7 +13,6 @@ import { StarField } from "../components/StarField";
 // standard relative path to the image file that actually lives in the
 // repo's `src/assets` directory. (relative to this file you have to climb
 // two levels, since we're inside `src/app/pages`)
-
 
 interface EventStats {
   totalChallenges: number;
@@ -90,7 +90,7 @@ export function Landing() {
           className="mb-2"
         >
           <img
-            src="/themes/Ramadhan/static/logo.png"
+            src={logoImg}
             alt="Engineers Spark Logo"
             className="w-28 md:w-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
           />
@@ -160,17 +160,15 @@ export function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4 max-w-3xl w-full"
+          className="grid grid-cols-2 md:grid-cols-3 gap-4 border-t border-white/5 pt-4 max-w-3xl w-full"
         >
           {(loading
             ? [
-                { label: "Prize", value: "$5K" },
                 { label: "Teams", value: "--" },
                 { label: "Challenges", value: "--" },
                 { label: "Duration", value: "48H" },
               ]
             : [
-                { label: "Prize", value: "$5K" },
                 {
                   label: "Teams",
                   value:

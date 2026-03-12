@@ -3,7 +3,7 @@ import { Eye, Globe, Lock, Search, Sparkles, Terminal } from "lucide-react";
 import { motion } from "motion/react";
 import type { FC } from "react";
 import { useState } from "react";
-import { categories } from "./data";
+import type { Category } from "./data";
 
 // SVG wheel math helpers
 const CX = 300,
@@ -48,17 +48,46 @@ const iconMap: Record<string, IconFC> = {
 };
 
 interface ChallengeWheelProps {
+  categories: Category[];
   selectedCategory: string | null;
   onCategoryClick: (id: string) => void;
   solvedCounts: Record<string, { solved: number; total: number }>;
 }
 
 export function ChallengeWheel({
+  categories,
   selectedCategory,
   onCategoryClick,
   solvedCounts,
 }: ChallengeWheelProps) {
   const [hovered, setHovered] = useState<string | null>(null);
+
+  // Handle empty categories case
+  if (!categories || categories.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className="relative flex items-center justify-center"
+          style={{
+            width: "min(420px, 88vw, 60vh)",
+            height: "min(420px, 88vw, 60vh)",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(212,165,32,0.15)",
+            borderRadius: "50%",
+          }}
+        >
+          <div className="text-center">
+            <p className="text-slate-400 text-sm font-[Rajdhani]">
+              {categories === null
+                ? "Loading challenges..."
+                : "No challenges available"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const segAngle = 360 / categories.length;
   const ROTATION_OFFSET = -segAngle / 2;
   const GAP = 2.2;

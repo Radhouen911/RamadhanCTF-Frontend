@@ -4,6 +4,7 @@ import {
   Flag,
   LogOut,
   Menu,
+  Shield,
   Star,
   Trophy,
   User,
@@ -13,6 +14,7 @@ import {
 import type { ElementType } from "react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
+import logoImg from "../../assets/logo.png";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -26,15 +28,14 @@ const navItems: NavItem[] = [
   { label: "Challenges", icon: Flag, href: "/challenges" },
   { label: "Scoreboard", icon: Trophy, href: "/scoreboard" },
   { label: "Teams", icon: Users, href: "/teams" },
-  { label: "Profile", icon: User, href: "/profile" },
 ];
 
 interface HeaderProps {
-  totalPoints: number;
-  solvedCount: number;
+  totalPoints?: number;
+  solvedCount?: number;
 }
 
-export function Header({ totalPoints, solvedCount }: HeaderProps) {
+export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { isAuthenticated, user, logout, loading } = useAuth();
@@ -76,7 +77,7 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
             {/* Landing page logo image */}
             <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
               <img
-                src="/themes/Ramadhan/static/logo.png"
+                src={logoImg}
                 alt="Ramadan CTF Logo"
                 className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
               />
@@ -143,6 +144,27 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                   </NavLink>
                 );
               })}
+
+              {/* Admin button - only visible to admins */}
+              {user?.isAdmin && (
+                <a
+                  href="/admin"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200"
+                  style={{
+                    fontFamily: "Rajdhani, sans-serif",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    letterSpacing: "1.5px",
+                    color: "rgba(192,132,252,0.9)",
+                    background: "rgba(192,132,252,0.1)",
+                    border: "1px solid rgba(192,132,252,0.25)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <Shield size={14} />
+                  Admin
+                </a>
+              )}
             </nav>
           )}
 
@@ -308,6 +330,21 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                         </p>
                       </div>
                       <Link
+                        to="/team"
+                        className="flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                        style={{
+                          fontFamily: "Rajdhani, sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.8)",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <Users size={14} />
+                        Team
+                      </Link>
+                      <Link
                         to="/profile"
                         className="flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors"
                         style={{
@@ -388,6 +425,27 @@ export function Header({ totalPoints, solvedCount }: HeaderProps) {
                 </NavLink>
               );
             })}
+
+            {/* Admin button - only visible to admins */}
+            {user?.isAdmin && (
+              <a
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-3 rounded-lg mb-1"
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  letterSpacing: "1px",
+                  color: "rgba(192,132,252,0.9)",
+                  background: "rgba(192,132,252,0.08)",
+                  textTransform: "uppercase",
+                }}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Shield size={16} />
+                Admin
+              </a>
+            )}
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { Footer } from "../components/Footer";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
@@ -16,7 +16,19 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#060b15]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-400" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -96,7 +108,7 @@ export function Login() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="hacker_01"
+                  placeholder="Enter your username"
                   required
                   className="w-full bg-black/20 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono text-sm"
                 />
