@@ -175,7 +175,9 @@ export function Scoreboard() {
         page += 1;
       }
 
-      return Array.from(new Map(allTeams.map((team) => [team.id, team])).values());
+      return Array.from(
+        new Map(allTeams.map((team) => [team.id, team])).values(),
+      );
     };
 
     const load = async () => {

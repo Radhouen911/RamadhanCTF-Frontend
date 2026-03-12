@@ -78,16 +78,27 @@ export function PublicUserProfile() {
           return;
         }
 
-        const [solvesResponse, awardsResponse, teamResponse] = await Promise.all([
-          ctfdApi.getUserSolves(parsed).catch(() => ({ data: [] as UserSolve[] })),
-          ctfdApi.getUserAwards(parsed).catch(() => ({ data: [] as UserAward[] })),
-          profileData.team_id
-            ? ctfdApi.getTeam(profileData.team_id).catch(() => ({ data: null as Team | null }))
-            : Promise.resolve({ data: null as Team | null }),
-        ]);
+        const [solvesResponse, awardsResponse, teamResponse] =
+          await Promise.all([
+            ctfdApi
+              .getUserSolves(parsed)
+              .catch(() => ({ data: [] as UserSolve[] })),
+            ctfdApi
+              .getUserAwards(parsed)
+              .catch(() => ({ data: [] as UserAward[] })),
+            profileData.team_id
+              ? ctfdApi
+                  .getTeam(profileData.team_id)
+                  .catch(() => ({ data: null as Team | null }))
+              : Promise.resolve({ data: null as Team | null }),
+          ]);
 
-        setSolves(Array.isArray(solvesResponse.data) ? solvesResponse.data : []);
-        setAwards(Array.isArray(awardsResponse.data) ? awardsResponse.data : []);
+        setSolves(
+          Array.isArray(solvesResponse.data) ? solvesResponse.data : [],
+        );
+        setAwards(
+          Array.isArray(awardsResponse.data) ? awardsResponse.data : [],
+        );
         setTeam(teamResponse.data || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
@@ -216,14 +227,43 @@ export function PublicUserProfile() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={solveChartData}>
                           <defs>
-                            <linearGradient id="userSolveGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.35} />
-                              <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
+                            <linearGradient
+                              id="userSolveGradient"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="5%"
+                                stopColor="#fbbf24"
+                                stopOpacity={0.35}
+                              />
+                              <stop
+                                offset="95%"
+                                stopColor="#fbbf24"
+                                stopOpacity={0}
+                              />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                          <XAxis dataKey="name" stroke="#ffffff50" tickLine={false} axisLine={false} fontSize={12} />
-                          <YAxis stroke="#ffffff50" tickLine={false} axisLine={false} fontSize={12} />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#ffffff10"
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="name"
+                            stroke="#ffffff50"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={12}
+                          />
+                          <YAxis
+                            stroke="#ffffff50"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={12}
+                          />
                           <Tooltip
                             contentStyle={{
                               backgroundColor: "#0f172a",

@@ -897,7 +897,7 @@ export type {
   TeamAward,
   TeamSolve,
   Token,
-  UserAward,
   User,
+  UserAward,
   UserSolve,
 };

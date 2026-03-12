@@ -133,8 +133,12 @@ export function PublicTeamProfile() {
             .catch(() => ({ data: [] as TeamAward[] })),
         ]);
 
-        setSolves(Array.isArray(solvesResponse.data) ? solvesResponse.data : []);
-        setAwards(Array.isArray(awardsResponse.data) ? awardsResponse.data : []);
+        setSolves(
+          Array.isArray(solvesResponse.data) ? solvesResponse.data : [],
+        );
+        setAwards(
+          Array.isArray(awardsResponse.data) ? awardsResponse.data : [],
+        );
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load team profile",
@@ -154,7 +158,10 @@ export function PublicTeamProfile() {
     return members.find((member) => member.id === team.captain_id) || null;
   }, [members, team?.captain_id]);
 
-  const teamSolveChartData = useMemo(() => buildTeamSolveProgress(solves), [solves]);
+  const teamSolveChartData = useMemo(
+    () => buildTeamSolveProgress(solves),
+    [solves],
+  );
 
   return (
     <div
@@ -262,14 +269,43 @@ export function PublicTeamProfile() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={teamSolveChartData}>
                           <defs>
-                            <linearGradient id="teamSolveGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#c084fc" stopOpacity={0.35} />
-                              <stop offset="95%" stopColor="#c084fc" stopOpacity={0} />
+                            <linearGradient
+                              id="teamSolveGradient"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="5%"
+                                stopColor="#c084fc"
+                                stopOpacity={0.35}
+                              />
+                              <stop
+                                offset="95%"
+                                stopColor="#c084fc"
+                                stopOpacity={0}
+                              />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                          <XAxis dataKey="name" stroke="#ffffff50" tickLine={false} axisLine={false} fontSize={12} />
-                          <YAxis stroke="#ffffff50" tickLine={false} axisLine={false} fontSize={12} />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#ffffff10"
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="name"
+                            stroke="#ffffff50"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={12}
+                          />
+                          <YAxis
+                            stroke="#ffffff50"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={12}
+                          />
                           <Tooltip
                             contentStyle={{
                               backgroundColor: "#0f172a",
