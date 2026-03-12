@@ -3,7 +3,6 @@ import {
   Crown,
   Eye,
   EyeOff,
-  Link,
   LogOut,
   Plus,
   Settings,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import type { Team } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
@@ -38,7 +37,6 @@ interface TeamMember {
 
 export function TeamManagement() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const {
     user,
     isAuthenticated,
@@ -55,19 +53,18 @@ export function TeamManagement() {
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDisbandModal, setShowDisbandModal] = useState(false);
-  const [showInviteLinkModal, setShowInviteLinkModal] = useState(false);
+  const [showCaptainModal, setShowCaptainModal] = useState(false);
 
   // Form states
   const [createTeamName, setCreateTeamName] = useState("");
   const [createTeamPassword, setCreateTeamPassword] = useState("");
   const [showCreatePassword, setShowCreatePassword] = useState(false);
 
-  const [joinTeamId, setJoinTeamId] = useState("");
+  const [joinTeamName, setJoinTeamName] = useState("");
   const [joinTeamPassword, setJoinTeamPassword] = useState("");
-  const [joinInviteToken, setJoinInviteToken] = useState("");
+  const [joinInviteCode, setJoinInviteCode] = useState("");
   const [showJoinPassword, setShowJoinPassword] = useState(false);
 
   const [editTeamName, setEditTeamName] = useState("");
@@ -79,18 +76,16 @@ export function TeamManagement() {
   const [showEditNewPassword, setShowEditNewPassword] = useState(false);
   const [showEditConfirmPassword, setShowEditConfirmPassword] = useState(false);
   const [selectedCaptainId, setSelectedCaptainId] = useState("");
-  const [disbandConfirmPassword, setDisbandConfirmPassword] = useState("");
-  const [inviteGenerating, setInviteGenerating] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [captainSaving, setCaptainSaving] = useState(false);
-  const [disbanding, setDisbanding] = useState(false);
-  const [inviteLink, setInviteLink] = useState("");
   const [captainName, setCaptainName] = useState<string>("");
+  const [inviteLink, setInviteLink] = useState("");
 
   // Loading states
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [joiningTeam, setJoiningTeam] = useState(false);
-  const [leavingTeam, setLeavingTeam] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [captainSaving, setCaptainSaving] = useState(false);
+  const [disbanding, setDisbanding] = useState(false);
+  const [inviteGenerating, setInviteGenerating] = useState(false);
 
   const isTeamCaptain =
     currentTeam && user && currentTeam.captain_id === user.id;
@@ -195,7 +190,6 @@ export function TeamManagement() {
         setEditWebsite(team?.website || "");
         setEditAffiliation(team?.affiliation || "");
         setEditCountry(team?.country || "");
-        setSelectedCaptainId("");
         if (typeof team?.captain_id === "number") {
           const captain = resolvedMembers.find(
             (member) => member.id === team.captain_id,
@@ -204,13 +198,10 @@ export function TeamManagement() {
         } else {
           setCaptainName("");
         }
-
-        setInviteLink(team?.name ? `Team Name: ${team.name}` : "");
       } else {
         setCurrentTeam(null);
         setTeamMembers([]);
         setCaptainName("");
-        setInviteLink("");
       }
     } catch (err) {
       debugLog("[TeamManagement] Error loading team data:", err);
@@ -233,18 +224,6 @@ export function TeamManagement() {
     loadTeamData();
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    const inviteFromUrl = searchParams.get("invite")?.trim();
-    if (!inviteFromUrl) {
-      return;
-    }
-
-    setJoinInviteToken(inviteFromUrl);
-    if (!currentTeam) {
-      setShowJoinModal(true);
-    }
-  }, [searchParams, currentTeam]);
-
   const handleCreateTeam = async () => {
     if (!createTeamName.trim()) {
       setError("Team name is required");
@@ -254,19 +233,17 @@ export function TeamManagement() {
     try {
       setCreatingTeam(true);
       setError(null);
-      const response = await ctfdApi.createTeam(
+      await ctfdApi.createTeam(
         createTeamName.trim(),
         createTeamPassword.trim() || undefined,
       );
-      if (response.success) {
-        await checkAuthStatus();
-        await loadTeamData();
-        setShowCreateModal(false);
-        setCreateTeamName("");
-        setCreateTeamPassword("");
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-      }
+      await checkAuthStatus();
+      await loadTeamData();
+      setShowCreateModal(false);
+      setCreateTeamName("");
+      setCreateTeamPassword("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create team");
     } finally {
@@ -275,61 +252,43 @@ export function TeamManagement() {
   };
 
   const handleJoinTeam = async () => {
-    if (!joinInviteToken.trim() && !joinTeamId) {
-      setError("Please select a team or provide an invite token");
+    // If an invite code or full invite URL is provided, redirect to CTFd's native invite page
+    if (joinInviteCode.trim()) {
+      let code = joinInviteCode.trim();
+      try {
+        const url = new URL(code);
+        code = url.searchParams.get("code") || code;
+      } catch {
+        // not a URL, treat as raw code
+      }
+      window.location.href = `/teams/invite?code=${encodeURIComponent(code)}`;
       return;
     }
 
-    const selectedTeam = allTeams.find(
-      (team) => String(team.id) === joinTeamId,
-    );
+    if (!joinTeamName.trim()) {
+      setError("Team name or invite code is required");
+      return;
+    }
 
     try {
       setJoiningTeam(true);
       setError(null);
-
-      const response = await ctfdApi.joinTeam({
-        teamId: joinTeamId ? parseInt(joinTeamId, 10) : undefined,
-        teamName: selectedTeam?.name,
+      await ctfdApi.joinTeam({
+        teamName: joinTeamName.trim(),
         password: joinTeamPassword.trim() || undefined,
-        inviteToken: joinInviteToken.trim() || undefined,
       });
-
-      if (response.success) {
-        await checkAuthStatus();
-        await loadTeamData();
-        searchParams.delete("invite");
-        setSearchParams(searchParams, { replace: true });
-        setShowJoinModal(false);
-        setJoinTeamId("");
-        setJoinTeamPassword("");
-        setJoinInviteToken("");
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-      }
+      await checkAuthStatus();
+      await loadTeamData();
+      setShowJoinModal(false);
+      setJoinTeamName("");
+      setJoinTeamPassword("");
+      setJoinInviteCode("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join team");
     } finally {
       setJoiningTeam(false);
-    }
-  };
-
-  const handleLeaveTeam = async () => {
-    if (!currentTeam) return;
-
-    try {
-      setLeavingTeam(true);
-      setError(null);
-      await ctfdApi.leaveTeam(currentTeam.id);
-      await checkAuthStatus();
-      await loadTeamData();
-      setShowLeaveModal(false);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to leave team");
-    } finally {
-      setLeavingTeam(false);
     }
   };
 
@@ -373,22 +332,22 @@ export function TeamManagement() {
   };
 
   const handleTransferCaptain = async () => {
-    if (!currentTeam || !selectedCaptainId) {
+    if (!selectedCaptainId) {
       setError("Please select a team member to become captain");
       return;
     }
-
     const captainId = Number(selectedCaptainId);
     if (!Number.isFinite(captainId)) {
       setError("Invalid captain selection");
       return;
     }
-
     try {
       setCaptainSaving(true);
       setError(null);
-      await ctfdApi.transferTeamCaptain(currentTeam.id, captainId);
+      await ctfdApi.transferTeamCaptain(captainId);
       await loadTeamData();
+      setShowCaptainModal(false);
+      setSelectedCaptainId("");
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
@@ -400,60 +359,39 @@ export function TeamManagement() {
     }
   };
 
-  const handleGenerateInviteLink = async () => {
-    if (!currentTeam?.name) {
-      return;
-    }
-
-    try {
-      setInviteGenerating(true);
-      setError(null);
-      const shareValue = `Team Name: ${currentTeam.name}`;
-      setInviteLink(shareValue);
-      await navigator.clipboard.writeText(shareValue);
-      setShowInviteLinkModal(true);
-      setTimeout(() => setShowInviteLinkModal(false), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to copy team name");
-    } finally {
-      setInviteGenerating(false);
-    }
-  };
-
-  const handleRemoveMember = async (userId: number) => {
-    if (!currentTeam) return;
-
-    try {
-      setError(null);
-      await ctfdApi.removeTeamMember(currentTeam.id, userId);
-      await loadTeamData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove member");
-    }
-  };
-
   const handleDisbandTeam = async () => {
-    if (!currentTeam) {
-      return;
-    }
-
     try {
       setDisbanding(true);
       setError(null);
-      await ctfdApi.disbandTeam(
-        currentTeam.id,
-        disbandConfirmPassword.trim() || undefined,
-      );
+      await ctfdApi.disbandTeam();
       await checkAuthStatus();
       await loadTeamData();
       setShowDisbandModal(false);
-      setDisbandConfirmPassword("");
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disband team");
     } finally {
       setDisbanding(false);
+    }
+  };
+
+  const handleGenerateInviteLink = async () => {
+    try {
+      setInviteGenerating(true);
+      setError(null);
+      const code = await ctfdApi.generateTeamInviteCode();
+      const link = `${window.location.origin}/teams/invite?code=${encodeURIComponent(code)}`;
+      setInviteLink(link);
+      await navigator.clipboard.writeText(link);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to generate invite link",
+      );
+    } finally {
+      setInviteGenerating(false);
     }
   };
 
@@ -531,8 +469,7 @@ export function TeamManagement() {
                       Team Management
                     </h1>
                     <p className="font-[Rajdhani] text-slate-300 text-sm tracking-wide mb-8">
-                      Join a team to compete or create your own team to lead the
-                      charge.
+                      Create a new team or join an existing one to compete.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -576,7 +513,7 @@ export function TeamManagement() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05, duration: 0.4 }}
                     >
-                      <div className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 hover:border-[#fbbf24]/50 rounded-2xl p-6 shadow-lg transition-all group cursor-pointer">
+                      <div className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 hover:border-[#fbbf24]/50 rounded-2xl p-6 shadow-lg transition-all group">
                         <div className="absolute inset-0 bg-gradient-to-b from-[#fbbf24]/3 to-transparent rounded-2xl pointer-events-none group-hover:from-[#fbbf24]/8 transition-all" />
 
                         <div className="relative">
@@ -584,7 +521,7 @@ export function TeamManagement() {
                             {team.name}
                           </h3>
                           <p className="font-[Rajdhani] text-slate-400 text-sm mb-4">
-                            {team.members_count || 0}{" "}
+                            {team.members_count || 0} {" "}
                             {team.members_count === 1 ? "member" : "members"} •{" "}
                             {team.score} points
                           </p>
@@ -593,7 +530,7 @@ export function TeamManagement() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => {
-                              setJoinTeamId(String(team.id));
+                              setJoinTeamName(team.name);
                               setShowJoinModal(true);
                             }}
                             className="w-full py-2 bg-[#fbbf24]/10 border border-[#fbbf24]/30 text-[#fbbf24] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#fbbf24]/20 transition-all"
@@ -626,7 +563,7 @@ export function TeamManagement() {
                         {currentTeam.name}
                       </h1>
                       <p className="font-[Rajdhani] text-slate-400 text-sm tracking-wide">
-                        {currentTeam.members_count || 0}{" "}
+                        {currentTeam.members_count || 0} {" "}
                         {currentTeam.members_count === 1 ? "member" : "members"}
                       </p>
                     </div>
@@ -644,6 +581,18 @@ export function TeamManagement() {
                         </motion.button>
                       )}
 
+                      {isTeamCaptain && teamMembers.length > 1 && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowCaptainModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-[#fbbf24]/10 border border-[#fbbf24]/30 text-[#fbbf24] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#fbbf24]/20 transition-all"
+                        >
+                          <Crown size={14} />
+                          Transfer Captain
+                        </motion.button>
+                      )}
+
                       {isTeamCaptain && (
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -655,16 +604,6 @@ export function TeamManagement() {
                           Disband Team
                         </motion.button>
                       )}
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowLeaveModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-red-500/20 transition-all"
-                      >
-                        <LogOut size={14} />
-                        Leave Team
-                      </motion.button>
                     </div>
                   </div>
 
@@ -734,7 +673,7 @@ export function TeamManagement() {
                 </div>
               </motion.div>
 
-              {/* Invite Link */}
+              {/* Invite Link Generator */}
               {isTeamCaptain && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -750,134 +689,58 @@ export function TeamManagement() {
                         className="font-['Cinzel'] text-xl font-bold text-white mb-4"
                         style={{ letterSpacing: "1px" }}
                       >
-                        Team Invites
+                        Invite Members
                       </h2>
+                      <p className="font-[Rajdhani] text-slate-400 text-sm mb-4">
+                        Generate a secure invite link for new members to join your team:
+                      </p>
                       <div className="flex flex-col md:flex-row gap-3">
                         <input
                           readOnly
                           value={inviteLink}
-                          placeholder="Copy team name for users to join"
-                          className="flex-1 px-4 py-3 bg-white/5 border border-white/10 text-white/70 font-[Rajdhani] text-sm rounded-lg focus:outline-none focus:border-[#fbbf24]/50"
+                          placeholder="Click Generate to create an invite link"
+                          className="flex-1 px-4 py-3 bg-white/5 border border-white/10 text-white/70 placeholder-slate-500 font-[Rajdhani] text-sm rounded-lg focus:outline-none"
                         />
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={handleGenerateInviteLink}
                           disabled={inviteGenerating}
-                          className="px-4 py-3 bg-[#fbbf24]/10 border border-[#fbbf24]/30 text-[#fbbf24] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#fbbf24]/20 transition-all"
+                          className="px-4 py-3 bg-[#c084fc]/10 border border-[#c084fc]/30 text-[#c084fc] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#c084fc]/20 transition-all disabled:opacity-50"
                         >
                           <span className="inline-flex items-center gap-2">
-                            <Link size={16} />
-                            {inviteGenerating ? "Copying..." : "Copy Team Name"}
+                            <LogOut size={16} />
+                            {inviteGenerating ? "Generating..." : "Generate"}
                           </span>
                         </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          disabled={!inviteLink}
-                          onClick={() => {
-                            navigator.clipboard.writeText(inviteLink);
-                            setShowInviteLinkModal(true);
-                            setTimeout(
-                              () => setShowInviteLinkModal(false),
-                              2000,
-                            );
-                          }}
-                          className="px-4 py-3 bg-[#c084fc]/10 border border-[#c084fc]/30 text-[#c084fc] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#c084fc]/20 transition-all disabled:opacity-40"
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <Copy size={16} />
-                            Copy
-                          </span>
-                        </motion.button>
-                      </div>
-                      <p className="mt-3 font-[Rajdhani] text-xs text-slate-400">
-                        CTFd v1-compatible flow: share your team name and
-                        password for members to join.
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {isTeamCaptain && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.15 }}
-                  className="mb-8"
-                >
-                  <div className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-[#c084fc]/3 to-transparent pointer-events-none" />
-
-                    <div className="relative">
-                      <h2
-                        className="font-['Cinzel'] text-xl font-bold text-white mb-4"
-                        style={{ letterSpacing: "1px" }}
-                      >
-                        Captain Controls
-                      </h2>
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <select
-                          value={selectedCaptainId}
-                          onChange={(e) => setSelectedCaptainId(e.target.value)}
-                          className="flex-1 px-4 py-3 bg-white/5 border border-white/10 text-white font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#c084fc]/50"
-                          style={{
-                            colorScheme: "dark",
-                            backgroundColor: "rgba(255,255,255,0.05)",
-                            color: "#ffffff",
-                          }}
-                        >
-                          <option
-                            value=""
-                            style={{
-                              backgroundColor: "#0a0f20",
-                              color: "#ffffff",
+                        {inviteLink && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              navigator.clipboard.writeText(inviteLink);
+                              setShowSuccess(true);
+                              setTimeout(() => setShowSuccess(false), 2000);
                             }}
+                            className="px-4 py-3 bg-[#fbbf24]/10 border border-[#fbbf24]/30 text-[#fbbf24] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#fbbf24]/20 transition-all"
                           >
-                            Select new captain...
-                          </option>
-                          {teamMembers
-                            .filter(
-                              (member) => member.id !== currentTeam?.captain_id,
-                            )
-                            .map((member) => (
-                              <option
-                                key={member.id}
-                                value={member.id}
-                                style={{
-                                  backgroundColor: "#0a0f20",
-                                  color: "#ffffff",
-                                }}
-                              >
-                                {member.name}
-                              </option>
-                            ))}
-                        </select>
-
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={handleTransferCaptain}
-                          disabled={!selectedCaptainId || captainSaving}
-                          className="px-4 py-3 bg-[#c084fc]/10 border border-[#c084fc]/30 text-[#c084fc] font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-[#c084fc]/20 transition-all disabled:opacity-40"
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <Crown size={16} />
-                            {captainSaving ? "Updating..." : "Transfer Captain"}
-                          </span>
-                        </motion.button>
+                            <span className="inline-flex items-center gap-2">
+                              <Copy size={16} />
+                              Copy
+                            </span>
+                          </motion.button>
+                        )}
                       </div>
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Team Roster */}
+              {/* Team Members */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.6, delay: 0.15 }}
               >
                 <div className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#fbbf24]/3 to-transparent pointer-events-none" />
@@ -887,34 +750,41 @@ export function TeamManagement() {
                       className="font-['Cinzel'] text-xl font-bold text-white mb-4"
                       style={{ letterSpacing: "1px" }}
                     >
-                      Team Members
+                      Team Members ({teamMembers.length})
                     </h2>
                     <div className="space-y-3">
                       {teamMembers.length > 0 ? (
                         teamMembers.map((member) => (
                           <div
                             key={member.id}
-                            className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:border-[#fbbf24]/30 transition-all group"
+                            className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:border-[#fbbf24]/30 transition-all"
                           >
-                            <div>
-                              <p className="font-['Cinzel'] text-white font-bold">
-                                {member.name}
-                              </p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-['Cinzel'] text-white font-bold">
+                                  {member.name}
+                                </p>
+                                {member.id === currentTeam?.captain_id && (
+                                  <span className="text-[#fbbf24]">
+                                    <Crown size={14} />
+                                  </span>
+                                )}
+                              </div>
                               {member.email && (
                                 <p className="font-[Rajdhani] text-slate-400 text-sm">
                                   {member.email}
                                 </p>
                               )}
                             </div>
-                            {isTeamCaptain && member.id !== user?.id && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleRemoveMember(member.id)}
-                                className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 font-[Rajdhani] font-bold uppercase text-xs tracking-wider rounded-lg hover:bg-red-500/20 transition-all opacity-0 group-hover:opacity-100"
-                              >
-                                Remove
-                              </motion.button>
+                            {member.score !== undefined && (
+                              <div className="text-right">
+                                <p className="font-[Rajdhani] text-[#fbbf24] font-bold">
+                                  {member.score}
+                                </p>
+                                <p className="font-[Rajdhani] text-slate-400 text-xs">
+                                  points
+                                </p>
+                              </div>
                             )}
                           </div>
                         ))
@@ -959,7 +829,7 @@ export function TeamManagement() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <label className="font-[Rajdhani] text-xs uppercase text-slate-300 tracking-wider block mb-2">
-                      Team Name
+                      Team Name *
                     </label>
                     <input
                       type="text"
@@ -1051,33 +921,31 @@ export function TeamManagement() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <label className="font-[Rajdhani] text-xs uppercase text-slate-300 tracking-wider block mb-2">
-                      Invite Token
+                      Invite Link or Code
                     </label>
                     <input
                       type="text"
-                      value={joinInviteToken}
-                      onChange={(e) => setJoinInviteToken(e.target.value)}
-                      placeholder="Optional secure invite token"
+                      value={joinInviteCode}
+                      onChange={(e) => setJoinInviteCode(e.target.value)}
+                      placeholder="Paste invite link or code (e.g. eyJ...)" 
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-slate-500 font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
                     />
+                    <p className="mt-1 font-[Rajdhani] text-xs text-slate-500">
+                      OR enter team name + password below
+                    </p>
                   </div>
 
                   <div>
                     <label className="font-[Rajdhani] text-xs uppercase text-slate-300 tracking-wider block mb-2">
-                      Select Team
+                      Team Name
                     </label>
-                    <select
-                      value={joinTeamId}
-                      onChange={(e) => setJoinTeamId(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
-                    >
-                      <option value="">Choose a team...</option>
-                      {allTeams.map((team) => (
-                        <option key={team.id} value={team.id}>
-                          {team.name} ({team.members_count || 0} members)
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      value={joinTeamName}
+                      onChange={(e) => setJoinTeamName(e.target.value)}
+                      placeholder="Enter team name"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-slate-500 font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
+                    />
                   </div>
 
                   <div>
@@ -1089,7 +957,7 @@ export function TeamManagement() {
                         type={showJoinPassword ? "text" : "password"}
                         value={joinTeamPassword}
                         onChange={(e) => setJoinTeamPassword(e.target.value)}
-                        placeholder="Optional if team is open or token is sufficient"
+                        placeholder="Password (if required)"
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-slate-500 font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
                       />
                       <button
@@ -1112,9 +980,9 @@ export function TeamManagement() {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       setShowJoinModal(false);
-                      setJoinTeamId("");
+                      setJoinTeamName("");
                       setJoinTeamPassword("");
-                      setJoinInviteToken("");
+                      setJoinInviteCode("");
                     }}
                     className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:bg-white/10 transition-all"
                   >
@@ -1142,13 +1010,13 @@ export function TeamManagement() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0a0f20]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+              className="bg-[#0a0f20]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden my-8"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-[#fbbf24]/3 to-transparent pointer-events-none" />
 
@@ -1157,7 +1025,7 @@ export function TeamManagement() {
                   Edit Team Settings
                 </h2>
 
-                <div className="space-y-4 mb-6">
+                <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
                   <div>
                     <label className="font-[Rajdhani] text-xs uppercase text-slate-300 tracking-wider block mb-2">
                       Team Name
@@ -1278,7 +1146,7 @@ export function TeamManagement() {
                     whileTap={{ scale: 0.95 }}
                     onClick={handleUpdateTeamSettings}
                     disabled={settingsSaving}
-                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#c084fc] to-[#9333ea] text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:from-[#c9a3f5] hover:to-[#a855f7] transition-all"
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#c084fc] to-[#9333ea] text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:from-[#c9a3f5] hover:to-[#a855f7] transition-all disabled:opacity-50"
                   >
                     {settingsSaving ? "Saving..." : "Update"}
                   </motion.button>
@@ -1289,9 +1157,9 @@ export function TeamManagement() {
         )}
       </AnimatePresence>
 
-      {/* Leave Team Modal */}
+      {/* Transfer Captain Modal */}
       <AnimatePresence>
-        {showLeaveModal && (
+        {showCaptainModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1304,32 +1172,44 @@ export function TeamManagement() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-[#0a0f20]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-red-500/3 to-transparent pointer-events-none" />
-
+              <div className="absolute inset-0 bg-gradient-to-b from-[#fbbf24]/3 to-transparent pointer-events-none" />
               <div className="relative">
                 <h2 className="font-['Cinzel_Decorative'] text-3xl font-bold text-white mb-2">
-                  Leave Team?
+                  Transfer Captain
                 </h2>
                 <p className="font-[Rajdhani] text-slate-400 text-sm mb-6">
-                  Are you sure you want to leave {currentTeam?.name}? You won't
-                  be able to submit flags for this team.
+                  Select a member to become the new captain of {currentTeam?.name}.
                 </p>
-
+                <select
+                  value={selectedCaptainId}
+                  onChange={(e) => setSelectedCaptainId(e.target.value)}
+                  className="w-full px-4 py-3 mb-6 bg-white/5 border border-white/10 text-white font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
+                  style={{ colorScheme: "dark", backgroundColor: "#0a0f20", color: "#ffffff" }}
+                >
+                  <option value="" style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}>Select a member...</option>
+                  {teamMembers
+                    .filter((m) => m.id !== currentTeam?.captain_id)
+                    .map((m) => (
+                      <option key={m.id} value={m.id} style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}>
+                        {m.name}
+                      </option>
+                    ))}
+                </select>
                 <div className="flex gap-3 pt-6 border-t border-white/10">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowLeaveModal(false)}
+                    onClick={() => { setShowCaptainModal(false); setSelectedCaptainId(""); }}
                     className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:bg-white/10 transition-all"
                   >
                     Cancel
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={handleLeaveTeam}
-                    disabled={leavingTeam}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 border border-red-500/30 text-red-400 font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:bg-red-500/30 disabled:opacity-50 transition-all"
+                    onClick={handleTransferCaptain}
+                    disabled={!selectedCaptainId || captainSaving}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#fbbf24] to-[#d97706] text-black font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:from-[#f59e0b] hover:to-[#c97200] disabled:opacity-50 transition-all"
                   >
-                    {leavingTeam ? "Leaving..." : "Leave"}
+                    {captainSaving ? "Transferring..." : "Transfer"}
                   </motion.button>
                 </div>
               </div>
@@ -1354,34 +1234,17 @@ export function TeamManagement() {
               className="bg-[#0a0f20]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-red-500/3 to-transparent pointer-events-none" />
-
               <div className="relative">
                 <h2 className="font-['Cinzel_Decorative'] text-3xl font-bold text-white mb-2">
                   Disband Team?
                 </h2>
-                <p className="font-[Rajdhani] text-slate-400 text-sm mb-4">
-                  This action is irreversible. All members will be removed from{" "}
-                  {currentTeam?.name}.
+                <p className="font-[Rajdhani] text-slate-400 text-sm mb-6">
+                  This will permanently disband <strong className="text-white">{currentTeam?.name}</strong> and remove all members. This cannot be undone.
                 </p>
-
-                <label className="font-[Rajdhani] text-xs uppercase text-slate-300 tracking-wider block mb-2">
-                  Confirm Current Team Password
-                </label>
-                <input
-                  type="password"
-                  value={disbandConfirmPassword}
-                  onChange={(e) => setDisbandConfirmPassword(e.target.value)}
-                  placeholder="Required by backend when configured"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-slate-500 font-[Rajdhani] rounded-lg focus:outline-none focus:border-red-500/50 transition-all"
-                />
-
-                <div className="flex gap-3 pt-6 border-t border-white/10 mt-6">
+                <div className="flex gap-3 pt-6 border-t border-white/10">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setShowDisbandModal(false);
-                      setDisbandConfirmPassword("");
-                    }}
+                    onClick={() => setShowDisbandModal(false)}
                     className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:bg-white/10 transition-all"
                   >
                     Cancel
@@ -1396,22 +1259,6 @@ export function TeamManagement() {
                   </motion.button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Invite Link Copied Modal */}
-      <AnimatePresence>
-        {showInviteLinkModal && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-          >
-            <motion.div className="bg-emerald-500 text-white px-6 py-3 rounded-lg font-[Rajdhani] font-bold text-sm shadow-lg">
-              ✓ Invite token link copied to clipboard!
             </motion.div>
           </motion.div>
         )}

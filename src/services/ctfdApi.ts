@@ -202,7 +202,7 @@ class CTFdAPI {
   private async requestSettingsForm<T>(
     data: Record<string, string>,
   ): Promise<CTFdResponse<T>> {
-    return this.requestWebForm<T>("/settings", data);
+    return this.requestWebForm<T>("/teams/settings", data);
   }
 
   private normalizeTokenFromData(data: unknown): string | null {
@@ -522,37 +522,11 @@ class CTFdAPI {
     name: string,
     password?: string,
   ): Promise<CTFdResponse<Team>> {
-    const nonce = await this.getNonce();
-    const body: Record<string, string> = { name };
-    if (password?.trim()) {
-      body.password = password.trim();
-    }
-    if (nonce) {
-      body.nonce = nonce;
-    }
-
-    try {
-      await this.requestWebForm<Team>("/teams/new", {
-        name,
-        password: password?.trim() || "",
-      });
-
-      const me = await this.getCurrentUser();
-      if (me.data?.team_id) {
-        return this.getTeam(me.data.team_id);
-      }
-
-      throw new Error("Team created but membership could not be refreshed.");
-    } catch (error) {
-      try {
-        return await this.request<Team>("/teams", {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-      } catch {
-        throw error;
-      }
-    }
+    await this.requestWebForm<Team>("/teams/new", {
+      name,
+      password: password?.trim() || "",
+    });
+    return { success: true, data: {} as Team };
   }
 
   async joinTeam(options: {
@@ -561,83 +535,22 @@ class CTFdAPI {
     password?: string;
     inviteToken?: string;
   }): Promise<CTFdResponse<User>> {
-    const nonce = await this.getNonce();
-
-    if (options.inviteToken?.trim()) {
-      const token = options.inviteToken.trim();
-      const candidatePaths = [
-        "/teams/invites/accept",
-        "/teams/invites/join",
-        "/teams/invites",
-      ];
-
-      for (const path of candidatePaths) {
-        try {
-          return await this.request<User>(path, {
-            method: "POST",
-            body: JSON.stringify(
-              nonce
-                ? { token, password: options.password, nonce }
-                : { token, password: options.password },
-            ),
-          });
-        } catch {
-          continue;
-        }
-      }
-
-      throw new Error("Invite token is not supported by this CTFd backend.");
+    if (!options.teamName?.trim()) {
+      throw new Error("Team name is required to join a team");
     }
 
-    if (options.teamName?.trim()) {
-      try {
-        await this.requestWebForm<User>("/teams/join", {
-          name: options.teamName.trim(),
-          password: options.password?.trim() || "",
-        });
+    await this.requestWebForm<User>("/teams/join", {
+      name: options.teamName.trim(),
+      password: options.password?.trim() || "",
+    });
 
-        const me = await this.getCurrentUser();
-        return { success: true, data: me.data };
-      } catch {}
-    }
-
-    if (typeof options.teamId === "number") {
-      const body: Record<string, string | number> = { team_id: options.teamId };
-      if (options.password?.trim()) {
-        body.password = options.password.trim();
-      }
-      if (nonce) {
-        body.nonce = nonce;
-      }
-
-      try {
-        return await this.request<User>(`/teams/${options.teamId}/join`, {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-      } catch (error) {
-        if (!options.teamName?.trim()) {
-          throw error;
-        }
-      }
-    }
-
-    throw new Error(
-      "Failed to join team. Please check team name and password.",
-    );
+    return { success: true, data: {} as User };
   }
 
   async leaveTeam(teamId: number): Promise<CTFdResponse<any>> {
     const nonce = await this.getNonce();
-
-    try {
-      return await this.requestWebForm("/teams/leave", nonce ? { nonce } : {});
-    } catch {
-      return this.request(`/teams/${teamId}/leave`, {
-        method: "POST",
-        body: JSON.stringify(nonce ? { nonce } : {}),
-      });
-    }
+    await this.requestWebForm("/teams/leave", nonce ? { nonce } : {});
+    return { success: true, data: {} };
   }
 
   async updateTeamSettings(
@@ -647,31 +560,16 @@ class CTFdAPI {
     const nonce = await this.getNonce();
     const body: Record<string, string> = {};
 
-    if (settings.name !== undefined) {
-      body.name = settings.name;
-    }
-    if (settings.password !== undefined) {
-      body.password = settings.password;
-    }
-    if (settings.confirm !== undefined) {
-      body.confirm = settings.confirm;
-    }
-    if (settings.website !== undefined) {
-      body.website = settings.website;
-    }
-    if (settings.affiliation !== undefined) {
-      body.affiliation = settings.affiliation;
-    }
-    if (settings.country !== undefined) {
-      body.country = settings.country;
-    }
-
-    if (nonce) {
-      body.nonce = nonce;
-    }
+    if (settings.name !== undefined) body.name = settings.name;
+    if (settings.password !== undefined) body.password = settings.password;
+    if (settings.confirm !== undefined) body.confirm = settings.confirm;
+    if (settings.website !== undefined) body.website = settings.website;
+    if (settings.affiliation !== undefined) body.affiliation = settings.affiliation;
+    if (settings.country !== undefined) body.country = settings.country;
+    if (nonce) body.nonce = nonce;
 
     try {
-      return await this.request<Team>(`/teams/${teamId}`, {
+      return await this.request<Team>("/teams/me", {
         method: "PATCH",
         body: JSON.stringify(body),
       });
@@ -684,119 +582,50 @@ class CTFdAPI {
         affiliation: settings.affiliation || "",
         country: settings.country || "",
       });
-
       return this.getTeam(teamId);
     }
   }
 
   async transferTeamCaptain(
-    teamId: number,
     captainId: number,
   ): Promise<CTFdResponse<Team>> {
     const nonce = await this.getNonce();
-    try {
-      return await this.request<Team>(`/teams/${teamId}`, {
-        method: "PATCH",
-        body: JSON.stringify(
-          nonce ? { captain_id: captainId, nonce } : { captain_id: captainId },
-        ),
-      });
-    } catch {
-      await this.requestSettingsForm<Team>({
-        captain_id: String(captainId),
-      });
-      return this.getTeam(teamId);
-    }
+    return this.request<Team>("/teams/me", {
+      method: "PATCH",
+      body: JSON.stringify(
+        nonce ? { captain_id: captainId, nonce } : { captain_id: captainId },
+      ),
+    });
   }
 
-  async removeTeamMember(
-    teamId: number,
-    userId: number,
-  ): Promise<CTFdResponse<any>> {
+  async disbandTeam(): Promise<CTFdResponse<any>> {
     const nonce = await this.getNonce();
-    return this.request(`/teams/${teamId}/members/${userId}`, {
+    return this.request("/teams/me", {
       method: "DELETE",
       body: JSON.stringify(nonce ? { nonce } : {}),
     });
   }
 
-  async disbandTeam(
-    teamId: number,
-    confirm?: string,
-  ): Promise<CTFdResponse<any>> {
+  async generateTeamInviteCode(): Promise<string> {
     const nonce = await this.getNonce();
-
-    try {
-      return await this.request(`/teams/${teamId}`, {
-        method: "DELETE",
-        body: JSON.stringify(nonce ? { nonce, confirm } : { confirm }),
-      });
-    } catch {
-      try {
-        return await this.requestWebForm(`/teams/${teamId}/delete`, {
-          confirm: confirm || "",
-        });
-      } catch {
-        return this.requestSettingsForm({
-          confirm: confirm || "",
-          disband: "true",
-        });
-      }
-    }
-  }
-
-  async createTeamInviteToken(
-    teamId: number,
-  ): Promise<CTFdResponse<TeamInviteToken>> {
-    await this.verifyTeamModeEnabled();
-    await this.verifyTeamPermissions(teamId);
-
-    const nonce = await this.getNonce();
-    const verifiedPath = await this.verifyInviteEndpointPath(teamId, nonce);
-
-    if (!verifiedPath) {
-      throw new Error(
-        "Invite token endpoints are unavailable (checked: /invites, /invite, /tokens). This CTFd v1 backend does not expose team invite-token APIs.",
-      );
-    }
-
-    const response = await fetch(`${this.baseURL}${verifiedPath}`, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await this.request<any>("/teams/me/members", {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(nonce
-          ? {
-              "CSRF-Token": nonce,
-              "X-CSRF-Token": nonce,
-            }
-          : {}),
-      },
       body: JSON.stringify(nonce ? { nonce } : {}),
     });
-
-    if (!response.ok) {
-      throw new Error(
-        `Invite token request failed: ${response.status} ${response.statusText}`,
-      );
+    // CTFd returns the invite code in data.code or data
+    const code =
+      response?.data?.code ||
+      response?.data?.invite_code ||
+      response?.data?.token ||
+      (typeof response?.data === "string" ? response.data : null);
+    if (!code) {
+      throw new Error("CTFd did not return an invite code.");
     }
-
-    const parsed = (await response.json()) as CTFdResponse<unknown>;
-    const token = this.normalizeTokenFromData(parsed.data);
-    if (!token) {
-      throw new Error(
-        "Invite token response did not include a valid token value.",
-      );
-    }
-
-    return {
-      success: true,
-      data: {
-        token,
-        url: this.buildInviteUrl(token),
-      },
-    };
+    return code as string;
   }
+
+
 
   // Users
   async getCurrentUser(): Promise<CTFdResponse<User>> {
