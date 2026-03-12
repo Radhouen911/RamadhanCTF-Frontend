@@ -59,9 +59,11 @@ jobs:
             git clone "${FRONTEND_REPO}" "${THEME_DIR}"
           fi
 
-          echo "[*] Pulling latest code ..."
+          echo "[*] Syncing latest code (discarding local drift) ..."
           cd "${THEME_DIR}"
-          git pull --ff-only origin main
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
 
           echo "[*] Installing dependencies ..."
           npm ci --silent
