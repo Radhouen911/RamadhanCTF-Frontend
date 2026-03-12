@@ -17,6 +17,9 @@ import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
+import { VisibilityNotice } from "../components/VisibilityNotice";
+import { useAuth } from "../context/AuthContext";
+import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
 const CHART_COLORS = [
   "#fbbf24",
@@ -147,13 +150,47 @@ function buildChartData(topData: Record<string, TopTeamData>): {
 }
 
 export function Scoreboard() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { scoreVisibility, loading: configLoading } = useAppConfig();
   const [standings, setStandings] = useState<ScoreboardRow[]>([]);
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
   const [chartTeams, setChartTeams] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const canViewScores = canAccessVisibility(scoreVisibility, {
+    isAuthenticated,
+    isAdmin: Boolean(user?.isAdmin),
+  });
+
+  const visibilityTitle =
+    scoreVisibility === "hidden"
+      ? "Dark hour is active"
+      : scoreVisibility === "admins"
+        ? "Scoreboard is admin-only"
+        : "Scoreboard is unavailable";
+
+  const visibilityDescription =
+    scoreVisibility === "hidden"
+      ? "The scoreboard is temporarily hidden for all non-admin players. Once dark hour ends, standings and solve progress will reappear automatically."
+      : scoreVisibility === "admins"
+        ? "This event is currently configured to only show scoreboard data to administrator accounts."
+        : "Score data is not available for your account right now.";
+
   useEffect(() => {
+    if (authLoading || configLoading) {
+      return;
+    }
+
+    if (!canViewScores) {
+      setStandings([]);
+      setChartPoints([]);
+      setChartTeams([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     const fetchAllTeams = async () => {
       const allTeams: Team[] = [];
       let page = 1;
@@ -208,7 +245,7 @@ export function Scoreboard() {
       }
     };
     load();
-  }, []);
+  }, [authLoading, canViewScores, configLoading]);
 
   const myScore = useMemo(() => {
     // Could be used to highlight own entry — leave as 0 for now
@@ -237,10 +274,15 @@ export function Scoreboard() {
           </p>
         </motion.div>
 
-        {loading ? (
+        {authLoading || configLoading || loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-400" />
           </div>
+        ) : !canViewScores ? (
+          <VisibilityNotice
+            title={visibilityTitle}
+            description={visibilityDescription}
+          />
         ) : error ? (
           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg mb-8">
             <p className="text-red-300 font-[Rajdhani] text-sm">{error}</p>

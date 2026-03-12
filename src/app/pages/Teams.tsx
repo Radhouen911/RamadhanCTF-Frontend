@@ -8,7 +8,9 @@ import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
+import { VisibilityNotice } from "../components/VisibilityNotice";
 import { useAuth } from "../context/AuthContext";
+import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
 type ConfigMap = Record<string, unknown>;
 
@@ -91,6 +93,7 @@ const isForbiddenError = (error: unknown) =>
 
 export function Teams() {
   const { user, isAuthenticated } = useAuth();
+  const { scoreVisibility, loading: configLoading } = useAppConfig();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [teamsEnabled, setTeamsEnabled] = useState(true);
@@ -101,8 +104,17 @@ export function Teams() {
     description: string;
   } | null>(null);
 
+  const canViewScores = canAccessVisibility(scoreVisibility, {
+    isAuthenticated,
+    isAdmin: Boolean(user?.isAdmin),
+  });
+
   useEffect(() => {
     let mounted = true;
+
+    if (configLoading) {
+      return;
+    }
 
     const fetchAllTeams = async () => {
       const allTeams: Team[] = [];
@@ -152,10 +164,12 @@ export function Teams() {
 
         const [teamData, scoreboardData] = await Promise.all([
           fetchAllTeams(),
-          ctfdApi
-            .getScoreboard()
-            .then((response) => response.data || [])
-            .catch(() => [] as ScoreboardEntry[]),
+          canViewScores
+            ? ctfdApi
+                .getScoreboard()
+                .then((response) => response.data || [])
+                .catch(() => [] as ScoreboardEntry[])
+            : Promise.resolve([] as ScoreboardEntry[]),
         ]);
 
         const scoreboardById = new Map(
@@ -168,13 +182,20 @@ export function Teams() {
             return {
               id: team.id,
               name: team.name,
-              rank: scoreboardEntry?.place ?? team.place ?? null,
-              score: scoreboardEntry?.score ?? team.score ?? 0,
+              rank: canViewScores
+                ? (scoreboardEntry?.place ?? team.place ?? null)
+                : null,
+              score: canViewScores
+                ? (scoreboardEntry?.score ?? team.score ?? 0)
+                : 0,
               memberCount: getMemberCount(team),
               avatar: getAvatar(team.name),
             };
           })
           .sort((a, b) => {
+            if (!canViewScores) {
+              return a.name.localeCompare(b.name);
+            }
             if (a.rank !== null && b.rank !== null) {
               return a.rank - b.rank;
             }
@@ -228,7 +249,7 @@ export function Teams() {
     return () => {
       mounted = false;
     };
-  }, [isAuthenticated]);
+  }, [canViewScores, configLoading, isAuthenticated]);
 
   const filteredTeams = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -257,19 +278,19 @@ export function Teams() {
         color: "#fbbf24",
       },
       {
-        label: "Ranked Teams",
-        value: rankedTeams.toLocaleString(),
+        label: canViewScores ? "Ranked Teams" : "Rank Data",
+        value: canViewScores ? rankedTeams.toLocaleString() : "Hidden",
         icon: Trophy,
         color: "#34d399",
       },
       {
-        label: "Avg Team Score",
-        value: averageScore.toLocaleString(),
+        label: canViewScores ? "Avg Team Score" : "Team Score",
+        value: canViewScores ? averageScore.toLocaleString() : "Hidden",
         icon: Target,
         color: "#c084fc",
       },
     ];
-  }, [teams]);
+  }, [canViewScores, teams]);
 
   return (
     <div
@@ -281,7 +302,7 @@ export function Teams() {
     >
       <StarField />
       <IslamicPattern />
-      <Header totalPoints={user?.score ?? 0} solvedCount={0} />
+      <Header totalPoints={canViewScores ? user?.score ?? 0 : 0} solvedCount={0} />
 
       <div className="relative z-10 pt-28 px-4 pb-20 max-w-6xl mx-auto flex-1 w-full">
         <motion.div
@@ -313,9 +334,20 @@ export function Teams() {
               color: "rgba(255,255,255,0.4)",
             }}
           >
-            Live team standings powered by CTFd
+            {canViewScores
+              ? "Live team standings powered by CTFd"
+              : "Team rankings are hidden during dark hour"}
           </p>
         </motion.div>
+
+        {!canViewScores && (
+          <div className="mb-8">
+            <VisibilityNotice
+              title="Team scores are hidden"
+              description="Dark hour is active right now. Team rank and score data are hidden for non-admin players, but you can still browse participating teams."
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {stats.map((stat, idx) => (
@@ -402,7 +434,7 @@ export function Teams() {
             backdropFilter: "blur(20px)",
           }}
         >
-          {loading ? (
+          {configLoading || loading ? (
             <div className="p-8 text-center">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -493,18 +525,22 @@ export function Teams() {
                     borderBottom: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  <th className="p-4 pl-8 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
-                    Rank
-                  </th>
+                  {canViewScores && (
+                    <th className="p-4 pl-8 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
+                      Rank
+                    </th>
+                  )}
                   <th className="p-4 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
                     Team Name
                   </th>
                   <th className="p-4 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
                     Members
                   </th>
-                  <th className="p-4 pr-8 text-right text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
-                    Score
-                  </th>
+                  {canViewScores && (
+                    <th className="p-4 pr-8 text-right text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
+                      Score
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -518,13 +554,15 @@ export function Teams() {
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
                     onClick={() => navigate(`/teams/${team.id}`)}
                   >
-                    <td className="p-4 pl-8">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-[Rajdhani] font-bold text-lg ${team.rank === 1 ? "bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/40" : team.rank === 2 ? "bg-[#94a3b8]/20 text-[#94a3b8] border border-[#94a3b8]/40" : team.rank === 3 ? "bg-[#b45309]/20 text-[#b45309] border border-[#b45309]/40" : "text-white/40"}`}
-                      >
-                        {team.rank ?? "—"}
-                      </div>
-                    </td>
+                    {canViewScores && (
+                      <td className="p-4 pl-8">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-[Rajdhani] font-bold text-lg ${team.rank === 1 ? "bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/40" : team.rank === 2 ? "bg-[#94a3b8]/20 text-[#94a3b8] border border-[#94a3b8]/40" : team.rank === 3 ? "bg-[#b45309]/20 text-[#b45309] border border-[#b45309]/40" : "text-white/40"}`}
+                        >
+                          {team.rank ?? "—"}
+                        </div>
+                      </td>
+                    )}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-white/10 to-white/5 text-white/80 border border-white/10">
@@ -533,7 +571,7 @@ export function Teams() {
                         <span className="text-white font-[Rajdhani] font-semibold tracking-wide text-lg">
                           {team.name}
                         </span>
-                        {team.rank !== null && team.rank <= 3 && (
+                        {canViewScores && team.rank !== null && team.rank <= 3 && (
                           <Medal size={14} className="text-[#fbbf24]" />
                         )}
                       </div>
@@ -541,18 +579,20 @@ export function Teams() {
                     <td className="p-4 text-white/60 font-[Rajdhani] text-lg font-medium">
                       {team.memberCount ?? "—"}
                     </td>
-                    <td className="p-4 pr-8 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Star
-                          size={14}
-                          className="text-[#fbbf24]"
-                          fill="#fbbf24"
-                        />
-                        <span className="text-[#fbbf24] font-[Rajdhani] font-bold text-xl">
-                          {team.score.toLocaleString()}
-                        </span>
-                      </div>
-                    </td>
+                    {canViewScores && (
+                      <td className="p-4 pr-8 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Star
+                            size={14}
+                            className="text-[#fbbf24]"
+                            fill="#fbbf24"
+                          />
+                          <span className="text-[#fbbf24] font-[Rajdhani] font-bold text-xl">
+                            {team.score.toLocaleString()}
+                          </span>
+                        </div>
+                      </td>
+                    )}
                   </motion.tr>
                 ))}
               </tbody>

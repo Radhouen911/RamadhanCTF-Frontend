@@ -16,6 +16,9 @@ import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
+import { VisibilityNotice } from "../components/VisibilityNotice";
+import { useAuth } from "../context/AuthContext";
+import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
 type SolveChartPoint = {
   name: string;
@@ -48,6 +51,8 @@ const buildSolveProgress = (solves: UserSolve[]): SolveChartPoint[] => {
 
 export function PublicUserProfile() {
   const { userId } = useParams();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { scoreVisibility, loading: configLoading } = useAppConfig();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
@@ -55,7 +60,16 @@ export function PublicUserProfile() {
   const [solves, setSolves] = useState<UserSolve[]>([]);
   const [awards, setAwards] = useState<UserAward[]>([]);
 
+  const canViewScores = canAccessVisibility(scoreVisibility, {
+    isAuthenticated,
+    isAdmin: Boolean(user?.isAdmin),
+  });
+
   useEffect(() => {
+    if (authLoading || configLoading) {
+      return;
+    }
+
     const parsed = Number(userId);
     if (!Number.isFinite(parsed)) {
       setError("Invalid user profile id");
@@ -80,9 +94,11 @@ export function PublicUserProfile() {
 
         const [solvesResponse, awardsResponse, teamResponse] =
           await Promise.all([
-            ctfdApi
-              .getUserSolves(parsed)
-              .catch(() => ({ data: [] as UserSolve[] })),
+            canViewScores
+              ? ctfdApi
+                  .getUserSolves(parsed)
+                  .catch(() => ({ data: [] as UserSolve[] }))
+              : Promise.resolve({ data: [] as UserSolve[] }),
             ctfdApi
               .getUserAwards(parsed)
               .catch(() => ({ data: [] as UserAward[] })),
@@ -108,7 +124,7 @@ export function PublicUserProfile() {
     };
 
     loadProfile();
-  }, [userId]);
+  }, [authLoading, canViewScores, configLoading, userId]);
 
   const solveChartData = useMemo(() => buildSolveProgress(solves), [solves]);
 
@@ -181,28 +197,34 @@ export function PublicUserProfile() {
                 <span className="px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-white/80 font-[Rajdhani] text-xs uppercase tracking-wider">
                   Awards: {awards.length}
                 </span>
-                <span className="px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-white/80 font-[Rajdhani] text-xs uppercase tracking-wider">
-                  Solves: {solves.length}
-                </span>
+                {canViewScores && (
+                  <span className="px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-white/80 font-[Rajdhani] text-xs uppercase tracking-wider">
+                    Solves: {solves.length}
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="font-[Rajdhani] text-xs uppercase tracking-wider text-white/50 mb-1">
-                    Score
-                  </p>
-                  <p className="font-[Rajdhani] text-white">
-                    {profile.score ?? 0}
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="font-[Rajdhani] text-xs uppercase tracking-wider text-white/50 mb-1">
-                    Rank
-                  </p>
-                  <p className="font-[Rajdhani] text-white">
-                    {profile.place ?? "—"}
-                  </p>
-                </div>
+                {canViewScores && (
+                  <>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <p className="font-[Rajdhani] text-xs uppercase tracking-wider text-white/50 mb-1">
+                        Score
+                      </p>
+                      <p className="font-[Rajdhani] text-white">
+                        {profile.score ?? 0}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <p className="font-[Rajdhani] text-xs uppercase tracking-wider text-white/50 mb-1">
+                        Rank
+                      </p>
+                      <p className="font-[Rajdhani] text-white">
+                        {profile.place ?? "—"}
+                      </p>
+                    </div>
+                  </>
+                )}
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <p className="font-[Rajdhani] text-xs uppercase tracking-wider text-white/50 mb-1">
                     Email
@@ -214,77 +236,84 @@ export function PublicUserProfile() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 mb-3">
-                    Solve Progress
-                  </p>
-                  {solveChartData.length === 0 ? (
-                    <p className="font-[Rajdhani] text-white/60 text-sm">
-                      No solves yet.
+                {canViewScores ? (
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <p className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 mb-3">
+                      Solve Progress
                     </p>
-                  ) : (
-                    <div className="h-[220px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={solveChartData}>
-                          <defs>
-                            <linearGradient
-                              id="userSolveGradient"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="5%"
-                                stopColor="#fbbf24"
-                                stopOpacity={0.35}
-                              />
-                              <stop
-                                offset="95%"
-                                stopColor="#fbbf24"
-                                stopOpacity={0}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#ffffff10"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#ffffff50"
-                            tickLine={false}
-                            axisLine={false}
-                            fontSize={12}
-                          />
-                          <YAxis
-                            stroke="#ffffff50"
-                            tickLine={false}
-                            axisLine={false}
-                            fontSize={12}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#fbbf2440",
-                              borderRadius: "8px",
-                              color: "#fff",
-                            }}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="score"
-                            stroke="#fbbf24"
-                            fillOpacity={1}
-                            fill="url(#userSolveGradient)"
-                            strokeWidth={2}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
+                    {solveChartData.length === 0 ? (
+                      <p className="font-[Rajdhani] text-white/60 text-sm">
+                        No solves yet.
+                      </p>
+                    ) : (
+                      <div className="h-[220px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={solveChartData}>
+                            <defs>
+                              <linearGradient
+                                id="userSolveGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#fbbf24"
+                                  stopOpacity={0.35}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#fbbf24"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#ffffff10"
+                              vertical={false}
+                            />
+                            <XAxis
+                              dataKey="name"
+                              stroke="#ffffff50"
+                              tickLine={false}
+                              axisLine={false}
+                              fontSize={12}
+                            />
+                            <YAxis
+                              stroke="#ffffff50"
+                              tickLine={false}
+                              axisLine={false}
+                              fontSize={12}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                borderColor: "#fbbf2440",
+                                borderRadius: "8px",
+                                color: "#fff",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="score"
+                              stroke="#fbbf24"
+                              fillOpacity={1}
+                              fill="url(#userSolveGradient)"
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <VisibilityNotice
+                    title="User solves are hidden"
+                    description="Dark hour is active right now. Solve progress, solve history, rank, and score are hidden for all non-admin players."
+                  />
+                )}
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <p className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 mb-3">
@@ -316,46 +345,48 @@ export function PublicUserProfile() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <p className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 mb-3">
-                  Solves
-                </p>
-                {solves.length === 0 ? (
-                  <p className="font-[Rajdhani] text-white/60 text-sm">
-                    No solves yet.
+              {canViewScores && (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 mb-3">
+                    Solves
                   </p>
-                ) : (
-                  <div className="space-y-2 max-h-[260px] overflow-auto pr-1">
-                    {[...solves]
-                      .sort(
-                        (a, b) =>
-                          new Date(b.date || 0).getTime() -
-                          new Date(a.date || 0).getTime(),
-                      )
-                      .map((solve, index) => (
-                        <div
-                          key={`${solve.challenge_id ?? "solve"}-${solve.date ?? index}`}
-                          className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 flex items-center justify-between gap-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-[Rajdhani] text-white text-sm font-semibold truncate">
-                              {solve.challenge?.name ||
-                                `Challenge #${solve.challenge_id ?? "?"}`}
-                            </p>
-                            <p className="font-[Rajdhani] text-white/60 text-xs">
-                              {solve.date
-                                ? new Date(solve.date).toLocaleString()
-                                : "Unknown time"}
-                            </p>
+                  {solves.length === 0 ? (
+                    <p className="font-[Rajdhani] text-white/60 text-sm">
+                      No solves yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-[260px] overflow-auto pr-1">
+                      {[...solves]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.date || 0).getTime() -
+                            new Date(a.date || 0).getTime(),
+                        )
+                        .map((solve, index) => (
+                          <div
+                            key={`${solve.challenge_id ?? "solve"}-${solve.date ?? index}`}
+                            className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 flex items-center justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-[Rajdhani] text-white text-sm font-semibold truncate">
+                                {solve.challenge?.name ||
+                                  `Challenge #${solve.challenge_id ?? "?"}`}
+                              </p>
+                              <p className="font-[Rajdhani] text-white/60 text-xs">
+                                {solve.date
+                                  ? new Date(solve.date).toLocaleString()
+                                  : "Unknown time"}
+                              </p>
+                            </div>
+                            <span className="font-[Rajdhani] text-[#fbbf24] text-sm font-bold shrink-0">
+                              +{solve.value ?? solve.challenge?.value ?? 0}
+                            </span>
                           </div>
-                          <span className="font-[Rajdhani] text-[#fbbf24] text-sm font-bold shrink-0">
-                            +{solve.value ?? solve.challenge?.value ?? 0}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </motion.div>

@@ -19,11 +19,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import type { User as ApiUser, Team } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
+import { VisibilityNotice } from "../components/VisibilityNotice";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
 import { useAuth } from "../context/AuthContext";
+import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
 interface SolveHistoryItem {
   id: number;
@@ -35,6 +37,7 @@ interface SolveHistoryItem {
 
 export function Profile() {
   const { user: authUser, isAuthenticated, loading: authLoading } = useAuth();
+  const { scoreVisibility, loading: configLoading } = useAppConfig();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ApiUser | null>(null);
@@ -48,8 +51,13 @@ export function Profile() {
   const [generatingToken, setGeneratingToken] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
 
+  const canViewScores = canAccessVisibility(scoreVisibility, {
+    isAuthenticated,
+    isAdmin: Boolean(authUser?.isAdmin),
+  });
+
   useEffect(() => {
-    if (authLoading) {
+    if (authLoading || configLoading) {
       return;
     }
 
@@ -68,7 +76,9 @@ export function Profile() {
 
         if (me?.id) {
           try {
-            const solvesResponse = await ctfdApi.getUserSolves(me.id);
+            const solvesResponse = canViewScores
+              ? await ctfdApi.getUserSolves(me.id)
+              : { data: [] };
             const solves = Array.isArray(solvesResponse.data)
               ? solvesResponse.data
               : [];
@@ -120,7 +130,7 @@ export function Profile() {
     };
 
     loadProfileData();
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, canViewScores, configLoading, isAuthenticated]);
 
   const joinedDate = useMemo(() => {
     return "Registered user";
@@ -188,10 +198,13 @@ export function Profile() {
     >
       <StarField />
       <IslamicPattern />
-      <Header totalPoints={profile?.score ?? 0} solvedCount={solvedCount} />
+      <Header
+        totalPoints={canViewScores ? profile?.score ?? 0 : 0}
+        solvedCount={canViewScores ? solvedCount : 0}
+      />
 
       <div className="relative z-10 pt-28 px-4 pb-20 max-w-6xl mx-auto flex-1 w-full">
-        {authLoading || loadingProfile ? (
+        {authLoading || configLoading || loadingProfile ? (
           <div className="min-h-[40vh] flex items-center justify-center">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#fbbf24]" />
           </div>
@@ -290,28 +303,33 @@ export function Profile() {
                 {[
                   {
                     label: "Global Rank",
-                    value: profile?.place ? `#${profile.place}` : "—",
+                    value: canViewScores
+                      ? profile?.place
+                        ? `#${profile.place}`
+                        : "—"
+                      : "Hidden",
                     icon: Trophy,
                     color: "#fbbf24",
                   },
                   {
                     label: "Total Points",
-                    value: `${profile?.score ?? 0}`,
+                    value: canViewScores ? `${profile?.score ?? 0}` : "Hidden",
                     icon: Star,
                     color: "#34d399",
                   },
                   {
                     label: "Challenges Solved",
-                    value: `${solvedCount}`,
+                    value: canViewScores ? `${solvedCount}` : "Hidden",
                     icon: Flag,
                     color: "#c084fc",
                   },
                   {
                     label: "Completion Rate",
-                    value:
-                      totalChallenges > 0
+                    value: canViewScores
+                      ? totalChallenges > 0
                         ? `${Math.min(100, Math.round((solvedCount / totalChallenges) * 100))}%`
-                        : "0%",
+                        : "0%"
+                      : "Hidden",
                     icon: Activity,
                     color: "#f472b6",
                   },
@@ -340,37 +358,38 @@ export function Profile() {
               </div>
 
               {/* Solved History */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-                className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
-              >
-                <h3 className="text-xl font-bold text-white font-[Cinzel] mb-6 flex items-center gap-3">
-                  <Activity className="text-[#fbbf24]" size={20} />
-                  Recent Activity
-                </h3>
+              {canViewScores ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="bg-[#0a0f20]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
+                >
+                  <h3 className="text-xl font-bold text-white font-[Cinzel] mb-6 flex items-center gap-3">
+                    <Activity className="text-[#fbbf24]" size={20} />
+                    Recent Activity
+                  </h3>
 
-                <div className="space-y-3">
-                  {solveHistory.length === 0 && (
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                      <p className="font-[Rajdhani] text-white/60">
-                        No recent solve activity found.
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-3">
+                    {solveHistory.length === 0 && (
+                      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                        <p className="font-[Rajdhani] text-white/60">
+                          No recent solve activity found.
+                        </p>
+                      </div>
+                    )}
 
-                  {solveHistory.map((solve, i) => (
-                    <motion.div
-                      key={solve.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + i * 0.1 }}
-                      className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-2.5 rounded-lg 
+                    {solveHistory.map((solve, i) => (
+                      <motion.div
+                        key={solve.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 + i * 0.1 }}
+                        className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`p-2.5 rounded-lg 
                         ${
                           solve.category === "Crypto"
                             ? "bg-purple-500/20 text-purple-400"
@@ -380,36 +399,42 @@ export function Profile() {
                                 ? "bg-red-500/20 text-red-400"
                                 : "bg-green-500/20 text-green-400"
                         }`}
-                        >
-                          {solve.category === "Crypto" ? (
-                            <Lock size={18} />
-                          ) : solve.category === "Web" ? (
-                            <Globe size={18} />
-                          ) : solve.category === "Pwn" ? (
-                            <Terminal size={18} />
-                          ) : (
-                            <Cpu size={18} />
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-white font-medium font-[Rajdhani] text-lg leading-tight group-hover:text-[#fbbf24] transition-colors">
-                            {solve.name}
+                          >
+                            {solve.category === "Crypto" ? (
+                              <Lock size={18} />
+                            ) : solve.category === "Web" ? (
+                              <Globe size={18} />
+                            ) : solve.category === "Pwn" ? (
+                              <Terminal size={18} />
+                            ) : (
+                              <Cpu size={18} />
+                            )}
                           </div>
-                          <div className="text-white/40 text-xs uppercase tracking-wider mt-1">
-                            {solve.category} • {solve.date}
+                          <div>
+                            <div className="text-white font-medium font-[Rajdhani] text-lg leading-tight group-hover:text-[#fbbf24] transition-colors">
+                              {solve.name}
+                            </div>
+                            <div className="text-white/40 text-xs uppercase tracking-wider mt-1">
+                              {solve.category} • {solve.date}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="text-right">
-                        <div className="text-[#fbbf24] font-bold font-[Rajdhani] text-lg">
-                          +{solve.points}
+                        <div className="text-right">
+                          <div className="text-[#fbbf24] font-bold font-[Rajdhani] text-lg">
+                            +{solve.points}
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <VisibilityNotice
+                  title="Your score is hidden"
+                  description="Dark hour is active right now. Your score, rank, completion rate, and recent solve activity are hidden until score visibility is restored."
+                />
+              )}
             </div>
           </div>
         )}

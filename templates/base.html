@@ -20,6 +20,10 @@
         userName: "{{ Session.name or '' }}",
         userEmail: "{{ Session.email or '' }}",
         userType: "{{ Session.type or '' }}",
+        challengeVisibility: "{{ Configs.challenge_visibility }}",
+        accountVisibility: "{{ Configs.account_visibility }}",
+        scoreVisibilityValue: "{{ Configs.score_visibility }}",
+        registrationVisibility: "{{ Configs.registration_visibility }}",
         registrationCodeRequired: {{ 'true' if Configs.registration_code_required else 'false' }},
         ctfStart: {% if Configs.start %}"{{ Configs.start }}"{% else %}null{% endif %},
         ctfEnd: {% if Configs.end %}"{{ Configs.end }}"{% else %}null{% endif %},
@@ -76,12 +80,12 @@
     </script>
     
     <!-- Main CSS - synced by build script -->
-    <link rel="stylesheet" href="/themes/Ramadhan/static/assets/index-Cq4cS7aT.css" />
+    <link rel="stylesheet" href="/themes/Ramadhan/static/assets/index-C9SW-kBZ.css" />
   </head>
   <body>
     <div id="root"></div>
     
     <!-- Main JS - synced by build script -->
-    <script type="module" src="/themes/Ramadhan/static/assets/index-BSTXf7Tw.js"></script>
+    <script type="module" src="/themes/Ramadhan/static/assets/index-NVihFYyH.js"></script>
   </body>
 </html>
