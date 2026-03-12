@@ -1,3 +1,30 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* Notification panel — slim custom scrollbar */
+.notif-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.2s;
+}
+.notif-scroll:hover {
+  scrollbar-color: rgba(212, 165, 32, 0.35) transparent;
+}
+.notif-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.notif-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notif-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+.notif-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(212, 165, 32, 0.35);
+}
+.notif-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 165, 32, 0.6);
+}

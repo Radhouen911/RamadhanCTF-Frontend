@@ -9,10 +9,28 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  // No custom module aliases – keep the Vite configuration as
-  // minimal and idiomatic as possible for a plain React project.
-  // If you previously used `@` or `figma:` imports they have been
-  // rewritten to standard relative paths in the source files.
+
+  // Proxy API and SSE requests to CTFd backend during local development
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/events": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/login": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/logout": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ["**/*.svg", "**/*.csv"],
