@@ -50,6 +50,8 @@ jobs:
           THEME_DIR="/opt/CTFd/CTFd/themes/Ramadhan"
           CTFD_DIR="/opt/CTFd"
           FRONTEND_REPO="git@github.com:Radhouen911/RamadhanCTF-Frontend.git"
+          DEPLOY_KEY="/root/.ssh/ramadhan_frontend_deploy_key"
+          export GIT_SSH_COMMAND="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 
           # First run: theme dir may not be a git repo (setup.sh used rsync)
           # Clone it directly so future deploys just need git pull
