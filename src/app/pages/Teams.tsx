@@ -1,7 +1,7 @@
 import { Medal, Search, Shield, Star, Target, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import type { ScoreboardEntry, Team } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
@@ -19,19 +19,6 @@ interface TeamRow {
   score: number;
   memberCount: number | null;
   avatar: string;
-}
-
-interface TeamMemberRow {
-  id: number;
-  name: string;
-  email?: string;
-  score?: number;
-}
-
-interface TeamDetails {
-  id: number;
-  name: string;
-  members: TeamMemberRow[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +91,7 @@ const isForbiddenError = (error: unknown) =>
 
 export function Teams() {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [teamsEnabled, setTeamsEnabled] = useState(true);
   const [teams, setTeams] = useState<TeamRow[]>([]);
@@ -112,9 +100,6 @@ export function Teams() {
     title: string;
     description: string;
   } | null>(null);
-  const [selectedTeam, setSelectedTeam] = useState<TeamDetails | null>(null);
-  const [loadingTeamDetails, setLoadingTeamDetails] = useState(false);
-  const [teamDetailsError, setTeamDetailsError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -285,29 +270,6 @@ export function Teams() {
       },
     ];
   }, [teams]);
-
-  const handleOpenTeamDetails = async (team: TeamRow) => {
-    try {
-      setLoadingTeamDetails(true);
-      setTeamDetailsError(null);
-      const response = await ctfdApi.getTeam(team.id);
-      const members = Array.isArray(response.data?.members)
-        ? (response.data.members as TeamMemberRow[])
-        : [];
-
-      setSelectedTeam({
-        id: team.id,
-        name: response.data?.name || team.name,
-        members,
-      });
-    } catch (error) {
-      setTeamDetailsError(
-        error instanceof Error ? error.message : "Failed to load team members.",
-      );
-    } finally {
-      setLoadingTeamDetails(false);
-    }
-  };
 
   return (
     <div
@@ -554,7 +516,7 @@ export function Teams() {
                     transition={{ delay: idx * 0.03, duration: 0.25 }}
                     className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                    onClick={() => handleOpenTeamDetails(team)}
+                    onClick={() => navigate(`/teams/${team.id}`)}
                   >
                     <td className="p-4 pl-8">
                       <div
@@ -598,75 +560,6 @@ export function Teams() {
           )}
         </motion.div>
       </div>
-
-      {(selectedTeam || loadingTeamDetails || teamDetailsError) && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0a0f20]/95 shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="font-['Cinzel'] text-xl text-white tracking-wide">
-                {selectedTeam ? `${selectedTeam.name} Members` : "Team Details"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTeam(null);
-                  setTeamDetailsError(null);
-                }}
-                className="font-[Rajdhani] text-sm uppercase tracking-wider text-white/60 hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="p-6">
-              {loadingTeamDetails ? (
-                <p className="font-[Rajdhani] text-white/70">
-                  Loading members...
-                </p>
-              ) : teamDetailsError ? (
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                  <p className="font-[Rajdhani] text-red-300 text-sm">
-                    {teamDetailsError}
-                  </p>
-                </div>
-              ) : !selectedTeam || selectedTeam.members.length === 0 ? (
-                <p className="font-[Rajdhani] text-white/70">
-                  No members available.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {selectedTeam.members.map((member) => (
-                    <div
-                      key={member.id}
-                      className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <p className="font-[Rajdhani] text-white text-lg font-semibold">
-                          {member.name}
-                        </p>
-                        <p className="font-[Rajdhani] text-white/50 text-sm">
-                          {member.email || "Email hidden"}
-                        </p>
-                      </div>
-
-                      <Link
-                        to={`/users/${member.id}`}
-                        className="px-3 py-2 rounded-lg border border-[#fbbf24]/35 bg-[#fbbf24]/10 text-[#fbbf24] font-[Rajdhani] text-xs uppercase tracking-wider"
-                        onClick={() => {
-                          setSelectedTeam(null);
-                          setTeamDetailsError(null);
-                        }}
-                      >
-                        View Profile
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
       <Footer />
     </div>
   );

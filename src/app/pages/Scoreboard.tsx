@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import {
   Area,
   AreaChart,
@@ -10,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ScoreboardEntry } from "../../services/ctfdApi";
+import type { ScoreboardEntry, Team } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
@@ -44,6 +45,68 @@ type TopTeamData = {
 };
 
 type ChartPoint = Record<string, number | string>;
+
+type ScoreboardRow = {
+  account_id: number;
+  name: string;
+  score: number;
+  place: number | null;
+};
+
+const toNormalizedPlace = (value: number | null | undefined) =>
+  typeof value === "number" && value > 0 ? value : null;
+
+function mergeStandings(
+  scoreboardEntries: ScoreboardEntry[],
+  teams: Team[],
+): ScoreboardRow[] {
+  const merged = new Map<number, ScoreboardRow>();
+
+  scoreboardEntries.forEach((entry) => {
+    merged.set(entry.account_id, {
+      account_id: entry.account_id,
+      name: entry.name,
+      score: entry.score ?? 0,
+      place: toNormalizedPlace(entry.place),
+    });
+  });
+
+  teams.forEach((team) => {
+    const existing = merged.get(team.id);
+    if (existing) {
+      merged.set(team.id, {
+        ...existing,
+        name: existing.name || team.name,
+        score: existing.score ?? team.score ?? 0,
+        place: existing.place ?? toNormalizedPlace(team.place),
+      });
+      return;
+    }
+
+    merged.set(team.id, {
+      account_id: team.id,
+      name: team.name,
+      score: team.score ?? 0,
+      place: toNormalizedPlace(team.place),
+    });
+  });
+
+  return Array.from(merged.values()).sort((a, b) => {
+    if (a.place !== null && b.place !== null) {
+      return a.place - b.place;
+    }
+    if (a.place !== null) {
+      return -1;
+    }
+    if (b.place !== null) {
+      return 1;
+    }
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
 
 function buildChartData(topData: Record<string, TopTeamData>): {
   chartPoints: ChartPoint[];
@@ -84,23 +147,48 @@ function buildChartData(topData: Record<string, TopTeamData>): {
 }
 
 export function Scoreboard() {
-  const [standings, setStandings] = useState<ScoreboardEntry[]>([]);
+  const [standings, setStandings] = useState<ScoreboardRow[]>([]);
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
   const [chartTeams, setChartTeams] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchAllTeams = async () => {
+      const allTeams: Team[] = [];
+      let page = 1;
+      let hasNext = true;
+
+      while (hasNext && page <= 100) {
+        const response = await ctfdApi.getTeams({ page });
+        allTeams.push(...(response.data || []));
+
+        const pagination = response.meta?.pagination;
+        if (!pagination) {
+          hasNext = false;
+        } else if (typeof pagination.pages === "number") {
+          hasNext = page < pagination.pages;
+        } else {
+          hasNext = Boolean(pagination.next);
+        }
+
+        page += 1;
+      }
+
+      return Array.from(new Map(allTeams.map((team) => [team.id, team])).values());
+    };
+
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const [boardRes, topRes] = await Promise.all([
+        const [boardRes, topRes, teamsRes] = await Promise.all([
           ctfdApi.getScoreboard(),
           ctfdApi.getScoreboardTop(10).catch(() => null),
+          fetchAllTeams().catch(() => [] as Team[]),
         ]);
 
-        setStandings(boardRes.data || []);
+        setStandings(mergeStandings(boardRes.data || [], teamsRes));
 
         if (topRes?.data && typeof topRes.data === "object") {
           const { chartPoints: pts, teamNames } = buildChartData(
@@ -284,9 +372,12 @@ export function Scoreboard() {
                             >
                               {entry.name.substring(0, 2).toUpperCase()}
                             </div>
-                            <span className="font-bold text-slate-200 group-hover:text-amber-400 transition-colors">
+                            <Link
+                              to={`/teams/${entry.account_id}`}
+                              className="font-bold text-slate-200 group-hover:text-amber-400 hover:text-amber-400 transition-colors"
+                            >
                               {entry.name}
-                            </span>
+                            </Link>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right font-[Rajdhani] font-bold text-lg text-amber-400">

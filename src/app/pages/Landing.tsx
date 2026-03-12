@@ -160,17 +160,15 @@ export function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4 max-w-3xl w-full"
+          className="grid grid-cols-2 md:grid-cols-3 gap-4 border-t border-white/5 pt-4 max-w-3xl w-full"
         >
           {(loading
             ? [
-                { label: "Prize", value: "$5K" },
                 { label: "Teams", value: "--" },
                 { label: "Challenges", value: "--" },
                 { label: "Duration", value: "48H" },
               ]
             : [
-                { label: "Prize", value: "$5K" },
                 {
                   label: "Teams",
                   value:

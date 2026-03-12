@@ -108,7 +108,7 @@ export function Register() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="hacker_01"
+                  placeholder="Choose a username"
                   required
                   className="w-full bg-black/20 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono text-sm"
                 />

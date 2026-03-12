@@ -106,6 +106,38 @@ interface UserSolve {
   date?: string;
 }
 
+interface UserAward {
+  id?: number;
+  name?: string;
+  description?: string;
+  category?: string;
+  icon?: string;
+  value?: number;
+  date?: string;
+}
+
+interface TeamSolve {
+  challenge_id?: number;
+  value?: number;
+  date?: string;
+  challenge?: {
+    id?: number;
+    name?: string;
+    category?: string;
+    value?: number;
+  };
+}
+
+interface TeamAward {
+  id?: number;
+  name?: string;
+  description?: string;
+  category?: string;
+  icon?: string;
+  value?: number;
+  date?: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isDev = (import.meta as any).env?.DEV === true;
 const debugLog = (...args: unknown[]) => {
@@ -123,6 +155,50 @@ const debugWarn = (...args: unknown[]) => {
 class CTFdAPI {
   private baseURL = "/api/v1";
   private csrfToken: string | null = null;
+
+  private toErrorMessage(errorData: unknown, status: number): string {
+    if (!errorData || typeof errorData !== "object") {
+      return `API request failed: ${status}`;
+    }
+
+    const payload = errorData as Record<string, unknown>;
+
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    const directData = payload.data;
+    if (typeof directData === "string" && directData.trim()) {
+      return directData.trim();
+    }
+
+    const errors = payload.errors;
+    if (Array.isArray(errors)) {
+      const firstString = errors.find(
+        (entry): entry is string =>
+          typeof entry === "string" && entry.trim().length > 0,
+      );
+      if (firstString) {
+        return firstString.trim();
+      }
+
+      const firstObjMessage = errors
+        .map((entry) =>
+          entry && typeof entry === "object"
+            ? (entry as Record<string, unknown>).message
+            : null,
+        )
+        .find(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0,
+        );
+      if (firstObjMessage) {
+        return firstObjMessage.trim();
+      }
+    }
+
+    return `API request failed: ${status}`;
+  }
 
   private setCSRFToken(token: string | null): void {
     this.csrfToken = token;
@@ -432,9 +508,7 @@ class CTFdAPI {
             );
           }
         }
-        throw new Error(
-          `API request failed: ${response.status}${errorData ? ": " + JSON.stringify(errorData) : ""}`,
-        );
+        throw new Error(this.toErrorMessage(errorData, response.status));
       }
 
       const data = await response.json();
@@ -474,9 +548,7 @@ class CTFdAPI {
     return this.request<ScoreboardEntry[]>("/scoreboard");
   }
 
-  async getScoreboardTop(
-    count: number = 10,
-  ): Promise<
+  async getScoreboardTop(count: number = 10): Promise<
     CTFdResponse<
       Record<
         string,
@@ -564,7 +636,8 @@ class CTFdAPI {
     if (settings.password !== undefined) body.password = settings.password;
     if (settings.confirm !== undefined) body.confirm = settings.confirm;
     if (settings.website !== undefined) body.website = settings.website;
-    if (settings.affiliation !== undefined) body.affiliation = settings.affiliation;
+    if (settings.affiliation !== undefined)
+      body.affiliation = settings.affiliation;
     if (settings.country !== undefined) body.country = settings.country;
     if (nonce) body.nonce = nonce;
 
@@ -586,9 +659,7 @@ class CTFdAPI {
     }
   }
 
-  async transferTeamCaptain(
-    captainId: number,
-  ): Promise<CTFdResponse<Team>> {
+  async transferTeamCaptain(captainId: number): Promise<CTFdResponse<Team>> {
     const nonce = await this.getNonce();
     return this.request<Team>("/teams/me", {
       method: "PATCH",
@@ -624,8 +695,6 @@ class CTFdAPI {
     }
     return code as string;
   }
-
-
 
   // Users
   async getCurrentUser(): Promise<CTFdResponse<User>> {
@@ -725,6 +794,18 @@ class CTFdAPI {
     return this.request<UserSolve[]>(`/users/${id}/solves`);
   }
 
+  async getUserAwards(id: number): Promise<CTFdResponse<UserAward[]>> {
+    return this.request<UserAward[]>(`/users/${id}/awards`);
+  }
+
+  async getTeamSolves(id: number): Promise<CTFdResponse<TeamSolve[]>> {
+    return this.request<TeamSolve[]>(`/teams/${id}/solves`);
+  }
+
+  async getTeamAwards(id: number): Promise<CTFdResponse<TeamAward[]>> {
+    return this.request<TeamAward[]>(`/teams/${id}/awards`);
+  }
+
   // Config
   async getConfig(): Promise<CTFdResponse<any>> {
     return this.request("/configs");
@@ -813,7 +894,10 @@ export type {
   Challenge as ApiChallenge,
   ScoreboardEntry,
   Team,
+  TeamAward,
+  TeamSolve,
   Token,
+  UserAward,
   User,
   UserSolve,
 };

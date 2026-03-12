@@ -521,7 +521,7 @@ export function TeamManagement() {
                             {team.name}
                           </h3>
                           <p className="font-[Rajdhani] text-slate-400 text-sm mb-4">
-                            {team.members_count || 0} {" "}
+                            {team.members_count || 0}{" "}
                             {team.members_count === 1 ? "member" : "members"} •{" "}
                             {team.score} points
                           </p>
@@ -563,7 +563,7 @@ export function TeamManagement() {
                         {currentTeam.name}
                       </h1>
                       <p className="font-[Rajdhani] text-slate-400 text-sm tracking-wide">
-                        {currentTeam.members_count || 0} {" "}
+                        {currentTeam.members_count || 0}{" "}
                         {currentTeam.members_count === 1 ? "member" : "members"}
                       </p>
                     </div>
@@ -692,7 +692,8 @@ export function TeamManagement() {
                         Invite Members
                       </h2>
                       <p className="font-[Rajdhani] text-slate-400 text-sm mb-4">
-                        Generate a secure invite link for new members to join your team:
+                        Generate a secure invite link for new members to join
+                        your team:
                       </p>
                       <div className="flex flex-col md:flex-row gap-3">
                         <input
@@ -927,7 +928,7 @@ export function TeamManagement() {
                       type="text"
                       value={joinInviteCode}
                       onChange={(e) => setJoinInviteCode(e.target.value)}
-                      placeholder="Paste invite link or code (e.g. eyJ...)" 
+                      placeholder="Paste invite link or code (e.g. eyJ...)"
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-slate-500 font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
                     />
                     <p className="mt-1 font-[Rajdhani] text-xs text-slate-500">
@@ -1178,19 +1179,33 @@ export function TeamManagement() {
                   Transfer Captain
                 </h2>
                 <p className="font-[Rajdhani] text-slate-400 text-sm mb-6">
-                  Select a member to become the new captain of {currentTeam?.name}.
+                  Select a member to become the new captain of{" "}
+                  {currentTeam?.name}.
                 </p>
                 <select
                   value={selectedCaptainId}
                   onChange={(e) => setSelectedCaptainId(e.target.value)}
                   className="w-full px-4 py-3 mb-6 bg-white/5 border border-white/10 text-white font-[Rajdhani] rounded-lg focus:outline-none focus:border-[#fbbf24]/50 transition-all"
-                  style={{ colorScheme: "dark", backgroundColor: "#0a0f20", color: "#ffffff" }}
+                  style={{
+                    colorScheme: "dark",
+                    backgroundColor: "#0a0f20",
+                    color: "#ffffff",
+                  }}
                 >
-                  <option value="" style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}>Select a member...</option>
+                  <option
+                    value=""
+                    style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}
+                  >
+                    Select a member...
+                  </option>
                   {teamMembers
                     .filter((m) => m.id !== currentTeam?.captain_id)
                     .map((m) => (
-                      <option key={m.id} value={m.id} style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}>
+                      <option
+                        key={m.id}
+                        value={m.id}
+                        style={{ backgroundColor: "#0a0f20", color: "#ffffff" }}
+                      >
                         {m.name}
                       </option>
                     ))}
@@ -1198,7 +1213,10 @@ export function TeamManagement() {
                 <div className="flex gap-3 pt-6 border-t border-white/10">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => { setShowCaptainModal(false); setSelectedCaptainId(""); }}
+                    onClick={() => {
+                      setShowCaptainModal(false);
+                      setSelectedCaptainId("");
+                    }}
                     className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-white font-[Rajdhani] font-bold uppercase text-sm tracking-wider rounded-lg hover:bg-white/10 transition-all"
                   >
                     Cancel
@@ -1239,7 +1257,9 @@ export function TeamManagement() {
                   Disband Team?
                 </h2>
                 <p className="font-[Rajdhani] text-slate-400 text-sm mb-6">
-                  This will permanently disband <strong className="text-white">{currentTeam?.name}</strong> and remove all members. This cannot be undone.
+                  This will permanently disband{" "}
+                  <strong className="text-white">{currentTeam?.name}</strong>{" "}
+                  and remove all members. This cannot be undone.
                 </p>
                 <div className="flex gap-3 pt-6 border-t border-white/10">
                   <motion.button

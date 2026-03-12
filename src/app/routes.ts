@@ -5,6 +5,7 @@ import { Challenges } from "./pages/Challenges";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
+import { PublicTeamProfile } from "./pages/PublicTeamProfile";
 import { PublicUserProfile } from "./pages/PublicUserProfile";
 import { Register } from "./pages/Register";
 import { Scoreboard } from "./pages/Scoreboard";
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "/scoreboard", Component: Scoreboard },
       { path: "/teams", Component: Teams },
       { path: "/team", Component: TeamManagement },
+      { path: "/teams/:teamId", Component: PublicTeamProfile },
       { path: "/profile", Component: Profile },
       { path: "/users/:userId", Component: PublicUserProfile },
     ],
