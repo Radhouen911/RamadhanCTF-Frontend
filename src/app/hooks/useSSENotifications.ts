@@ -6,7 +6,8 @@ const isDev = (import.meta as any).env?.DEV === true;
 const isNotificationDebugEnabled = () => {
   try {
     return (
-      isDev || window.localStorage.getItem("ramadhan:notifications:debug") === "1"
+      isDev ||
+      window.localStorage.getItem("ramadhan:notifications:debug") === "1"
     );
   } catch {
     return isDev;
@@ -294,7 +295,11 @@ export function useSSENotifications(
         }
       } else if (!esRef.current) {
         errorCountRef.current = 0;
-        updateDebug({ status: "connecting", errorCount: 0, reconnectDelayMs: 0 });
+        updateDebug({
+          status: "connecting",
+          errorCount: 0,
+          reconnectDelayMs: 0,
+        });
         if (debugEnabledRef.current) {
           console.info("[notifications:sse] resuming (tab visible)");
         }

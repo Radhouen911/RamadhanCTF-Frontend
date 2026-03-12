@@ -5,7 +5,8 @@ const isDev = (import.meta as any).env?.DEV === true;
 const isNotificationDebugEnabled = () => {
   try {
     return (
-      isDev || window.localStorage.getItem("ramadhan:notifications:debug") === "1"
+      isDev ||
+      window.localStorage.getItem("ramadhan:notifications:debug") === "1"
     );
   } catch {
     return isDev;
@@ -107,12 +108,19 @@ export function NotificationDebugBadge() {
           }}
         >
           <div>Status: {debug.status}</div>
-          <div>Events: {debug.eventCount} | Parsed notifications: {debug.notificationCount}</div>
-          <div>List size: {notifications.length} | Unread: {unreadCount}</div>
+          <div>
+            Events: {debug.eventCount} | Parsed notifications:{" "}
+            {debug.notificationCount}
+          </div>
+          <div>
+            List size: {notifications.length} | Unread: {unreadCount}
+          </div>
           <div>Parse errors: {debug.parseErrorCount}</div>
           <div>Error count: {debug.errorCount}</div>
           <div>Reconnect in: {debug.reconnectDelayMs} ms</div>
-          <div>Last event: {debug.lastEventType ?? "-"} at {lastSeen}</div>
+          <div>
+            Last event: {debug.lastEventType ?? "-"} at {lastSeen}
+          </div>
           {debug.lastError && <div>Last error: {debug.lastError}</div>}
           {debug.lastPayloadPreview && (
             <div style={{ marginTop: "6px", color: "rgba(255,255,255,0.65)" }}>

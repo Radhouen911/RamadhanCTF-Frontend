@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Admin } from "./pages/Admin";
+import { Angel } from "./pages/Angel";
 import { Challenges } from "./pages/Challenges";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
@@ -15,6 +16,7 @@ import { Teams } from "./pages/Teams";
 export const router = createBrowserRouter([
   // Public routes — no auth required
   { path: "/", Component: Landing },
+  { path: "/angel", Component: Angel },
   { path: "/login", Component: Login },
   { path: "/register", Component: Register },
 

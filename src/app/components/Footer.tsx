@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react';
+import { Link } from "react-router";
 
 export function Footer() {
   return (
@@ -10,7 +10,12 @@ export function Footer() {
         </div>
         <div className="flex items-center gap-1">
           <span>Theme Designed by</span>
-          <span className="text-[#c084fc] font-bold">Angel</span>
+          <Link
+            to="/angel"
+            className="text-[#c084fc] font-bold hover:text-[#fbbf24] transition-colors"
+          >
+            Angel
+          </Link>
         </div>
       </div>
     </footer>

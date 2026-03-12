@@ -19,11 +19,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import type { User as ApiUser, Team } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
-import { VisibilityNotice } from "../components/VisibilityNotice";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
+import { VisibilityNotice } from "../components/VisibilityNotice";
 import { useAuth } from "../context/AuthContext";
 import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
@@ -199,7 +199,7 @@ export function Profile() {
       <StarField />
       <IslamicPattern />
       <Header
-        totalPoints={canViewScores ? profile?.score ?? 0 : 0}
+        totalPoints={canViewScores ? (profile?.score ?? 0) : 0}
         solvedCount={canViewScores ? solvedCount : 0}
       />
 

@@ -302,7 +302,10 @@ export function Teams() {
     >
       <StarField />
       <IslamicPattern />
-      <Header totalPoints={canViewScores ? user?.score ?? 0 : 0} solvedCount={0} />
+      <Header
+        totalPoints={canViewScores ? (user?.score ?? 0) : 0}
+        solvedCount={0}
+      />
 
       <div className="relative z-10 pt-28 px-4 pb-20 max-w-6xl mx-auto flex-1 w-full">
         <motion.div
@@ -571,9 +574,11 @@ export function Teams() {
                         <span className="text-white font-[Rajdhani] font-semibold tracking-wide text-lg">
                           {team.name}
                         </span>
-                        {canViewScores && team.rank !== null && team.rank <= 3 && (
-                          <Medal size={14} className="text-[#fbbf24]" />
-                        )}
+                        {canViewScores &&
+                          team.rank !== null &&
+                          team.rank <= 3 && (
+                            <Medal size={14} className="text-[#fbbf24]" />
+                          )}
                       </div>
                     </td>
                     <td className="p-4 text-white/60 font-[Rajdhani] text-lg font-medium">

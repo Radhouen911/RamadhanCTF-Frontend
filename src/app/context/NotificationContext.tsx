@@ -8,9 +8,9 @@ import {
   useState,
 } from "react";
 import {
+  type CTFdNotification,
   initialSSENotificationDebugState,
   type SSENotificationDebugState,
-  type CTFdNotification,
   useSSENotifications,
 } from "../hooks/useSSENotifications";
 
@@ -18,7 +18,8 @@ const isDev = (import.meta as any).env?.DEV === true;
 const isNotificationDebugEnabled = () => {
   try {
     return (
-      isDev || window.localStorage.getItem("ramadhan:notifications:debug") === "1"
+      isDev ||
+      window.localStorage.getItem("ramadhan:notifications:debug") === "1"
     );
   } catch {
     return isDev;
@@ -74,7 +75,8 @@ function normalizeApiNotification(raw: unknown): CTFdNotification | null {
         : "Notification",
     content: typeof obj.content === "string" ? obj.content : "",
     html: typeof obj.html === "string" ? obj.html : "",
-    type: typeof obj.type === "string" && obj.type.length > 0 ? obj.type : "toast",
+    type:
+      typeof obj.type === "string" && obj.type.length > 0 ? obj.type : "toast",
     sound: Boolean(obj.sound),
     user: typeof obj.user === "string" ? obj.user : null,
     user_id:
@@ -138,9 +140,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const handleNotification = useCallback((n: CTFdNotification) => {
-    appendNotification(n, "sse", true);
-  }, [appendNotification]);
+  const handleNotification = useCallback(
+    (n: CTFdNotification) => {
+      appendNotification(n, "sse", true);
+    },
+    [appendNotification],
+  );
 
   // SSE — always connected, no auth gate
   useSSENotifications(handleNotification, setDebug);
@@ -148,10 +153,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const syncFromApi = useCallback(async () => {
     const sinceId = lastSeenIdRef.current;
     try {
-      const response = await fetch(`/api/v1/notifications?since_id=${sinceId}`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/v1/notifications?since_id=${sinceId}`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         if (debugEnabledRef.current) {

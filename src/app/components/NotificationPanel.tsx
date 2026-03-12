@@ -236,8 +236,6 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
             })
           )}
         </div>
-
-
       </div>
     </>
   );

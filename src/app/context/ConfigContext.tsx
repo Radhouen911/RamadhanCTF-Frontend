@@ -74,11 +74,7 @@ const normalizeConfigMap = (data: unknown): ConfigMap => {
     return data.reduce<ConfigMap>((acc, entry) => {
       if (entry && typeof entry === "object") {
         const key =
-          "key" in entry
-            ? entry.key
-            : "name" in entry
-              ? entry.name
-              : undefined;
+          "key" in entry ? entry.key : "name" in entry ? entry.name : undefined;
         const value = "value" in entry ? entry.value : undefined;
 
         if (typeof key === "string") {
@@ -100,7 +96,10 @@ const readBootstrapConfig = () => {
   const init = (window as any).init || {};
 
   return {
-    challengeVisibility: normalizeVisibility(init.challengeVisibility, "private"),
+    challengeVisibility: normalizeVisibility(
+      init.challengeVisibility,
+      "private",
+    ),
     accountVisibility: normalizeVisibility(init.accountVisibility, "public"),
     scoreVisibility: normalizeVisibility(
       init.scoreVisibilityValue ?? init.scoreVisibility,
@@ -115,7 +114,10 @@ const readBootstrapConfig = () => {
 };
 
 const toConfigState = (data: ConfigMap) => ({
-  challengeVisibility: normalizeVisibility(data.challenge_visibility, "private"),
+  challengeVisibility: normalizeVisibility(
+    data.challenge_visibility,
+    "private",
+  ),
   accountVisibility: normalizeVisibility(data.account_visibility, "public"),
   scoreVisibility: normalizeVisibility(data.score_visibility, "private"),
   registrationVisibility: normalizeRegistrationVisibility(
