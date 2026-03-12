@@ -32,6 +32,18 @@ interface Challenge {
   max_attempts?: number;
 }
 
+interface WhaleContainer {
+  user_access?: string;
+  ip?: string;
+  host?: string;
+  port?: number | string;
+  nc?: string;
+  expiration?: string;
+  expires?: string;
+  renew?: string;
+  [key: string]: unknown;
+}
+
 interface User {
   id: number;
   name: string;
@@ -887,6 +899,46 @@ class CTFdAPI {
       throw error;
     }
   }
+
+  // Whale Plugin - Container Management
+  async getWhaleContainer(
+    challengeId: number,
+  ): Promise<CTFdResponse<WhaleContainer>> {
+    return this.request<WhaleContainer>(
+      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
+    );
+  }
+
+  async createWhaleContainer(
+    challengeId: number,
+  ): Promise<CTFdResponse<WhaleContainer>> {
+    return this.request<WhaleContainer>(
+      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
+      {
+        method: "POST",
+      },
+    );
+  }
+
+  async deleteWhaleContainer(): Promise<CTFdResponse<Record<string, unknown>>> {
+    return this.request<Record<string, unknown>>(
+      "/plugins/ctfd-whale/container",
+      {
+        method: "DELETE",
+      },
+    );
+  }
+
+  async renewWhaleContainer(
+    challengeId: number,
+  ): Promise<CTFdResponse<WhaleContainer>> {
+    return this.request<WhaleContainer>(
+      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
+      {
+        method: "PATCH",
+      },
+    );
+  }
 }
 
 export const ctfdApi = new CTFdAPI();
@@ -900,4 +952,5 @@ export type {
   User,
   UserAward,
   UserSolve,
+  WhaleContainer,
 };

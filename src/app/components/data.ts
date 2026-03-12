@@ -9,6 +9,7 @@ export interface Challenge {
   hint?: string;
   tags: string[];
   hasContainer?: boolean;
+  challengeType?: string;
 }
 
 export interface Category {

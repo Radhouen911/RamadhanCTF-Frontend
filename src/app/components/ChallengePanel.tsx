@@ -21,7 +21,8 @@ import {
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
 import type { FC } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { WhaleContainer } from "../../services/ctfdApi";
 import { ctfdApi } from "../../services/ctfdApi";
 import type { Category, Challenge } from "./data";
 
@@ -42,6 +43,101 @@ interface ChallengePanelProps {
   onSolve: (id: number) => void;
   onClose: () => void;
   onChallengeUpdate?: () => void;
+}
+
+type ParsedWhaleContainer = {
+  displayValue: string;
+  copyValue: string;
+  url: string | null;
+  expiresText: string | null;
+};
+
+function stripHtml(value: string): string {
+  const el = document.createElement("div");
+  el.innerHTML = value;
+  return (el.textContent || el.innerText || "").trim();
+}
+
+function extractHref(value: string): string | null {
+  const match = value.match(/href=["']([^"']+)["']/i);
+  return match?.[1]?.trim() || null;
+}
+
+function ensureProtocol(value: string): string {
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+  return `http://${value}`;
+}
+
+function formatExpiry(raw: string | null): string | null {
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `Expires ${parsed.toLocaleString()}`;
+  }
+
+  return raw.trim() || null;
+}
+
+function normalizeWhaleContainer(
+  data: WhaleContainer | null | undefined,
+): ParsedWhaleContainer | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const rawUserAccess =
+    typeof data.user_access === "string" ? data.user_access.trim() : "";
+  const href = rawUserAccess ? extractHref(rawUserAccess) : null;
+  const textAccess = rawUserAccess ? stripHtml(rawUserAccess) : "";
+  const ip =
+    typeof data.ip === "string"
+      ? data.ip.trim()
+      : typeof data.host === "string"
+        ? data.host.trim()
+        : "";
+  const port =
+    typeof data.port === "number" || typeof data.port === "string"
+      ? String(data.port).trim()
+      : "";
+  const ncCommand =
+    typeof data.nc === "string" && data.nc.trim().length > 0
+      ? data.nc.trim()
+      : ip && port
+        ? `nc ${ip} ${port}`
+        : "";
+
+  const displayValue = href || ncCommand || textAccess;
+  if (!displayValue) {
+    return null;
+  }
+
+  const copyValue = href || ncCommand || textAccess;
+  const url = href
+    ? ensureProtocol(href)
+    : textAccess && !/\s/.test(textAccess) && /[.:/]/.test(textAccess)
+      ? ensureProtocol(textAccess)
+      : null;
+  const expiresText = formatExpiry(
+    typeof data.expiration === "string"
+      ? data.expiration
+      : typeof data.expires === "string"
+        ? data.expires
+        : typeof data.renew === "string"
+          ? data.renew
+          : null,
+  );
+
+  return {
+    displayValue,
+    copyValue,
+    url,
+    expiresText,
+  };
 }
 
 function ChallengeCard({
@@ -67,12 +163,58 @@ function ChallengeCard({
   } | null>(null);
 
   const [containerStatus, setContainerStatus] = useState<
-    "idle" | "spawning" | "active"
+    "idle" | "loading" | "spawning" | "active"
   >("idle");
-  const [containerInfo, setContainerInfo] = useState<{
-    ip: string;
-    port: number;
-  } | null>(null);
+  const [containerInfo, setContainerInfo] =
+    useState<ParsedWhaleContainer | null>(null);
+  const [containerLoading, setContainerLoading] = useState(false);
+  const [containerError, setContainerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!challenge.hasContainer || isSolved || !expanded) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadContainerStatus = async () => {
+      setContainerLoading(true);
+      setContainerError(null);
+      setContainerStatus((prev) => (prev === "active" ? prev : "loading"));
+
+      try {
+        const response = await ctfdApi.getWhaleContainer(challenge.id);
+        const normalized = normalizeWhaleContainer(response.data);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (normalized) {
+          setContainerInfo(normalized);
+          setContainerStatus("active");
+        } else {
+          setContainerInfo(null);
+          setContainerStatus("idle");
+        }
+      } catch {
+        if (!cancelled) {
+          setContainerInfo(null);
+          setContainerStatus("idle");
+        }
+      } finally {
+        if (!cancelled) {
+          setContainerLoading(false);
+        }
+      }
+    };
+
+    void loadContainerStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [challenge.hasContainer, challenge.id, expanded, isSolved]);
 
   // Parse and sanitize markdown/HTML description
   const sanitizedDescription = useMemo(() => {
@@ -141,15 +283,78 @@ function ChallengeCard({
     }
   };
 
-  const handleSpawnContainer = () => {
-    // Container spawning requires a CTFd container plugin (e.g. CTFd-Whale).
-    // Without a backend plugin, we cannot provision real containers.
-    setContainerStatus("idle");
-    setContainerInfo(null);
-    alert(
-      "Container support is not available on this CTFd instance.\n" +
-        "Please contact an admin if this challenge requires a container.",
-    );
+  const handleSpawnContainer = async () => {
+    setContainerLoading(true);
+    setContainerError(null);
+    setContainerStatus("spawning");
+
+    try {
+      await ctfdApi.createWhaleContainer(challenge.id);
+      const statusResponse = await ctfdApi.getWhaleContainer(challenge.id);
+      const normalized = normalizeWhaleContainer(statusResponse.data);
+
+      if (!normalized) {
+        throw new Error(
+          "Container launched, but access information is missing.",
+        );
+      }
+
+      setContainerInfo(normalized);
+      setContainerStatus("active");
+    } catch (error) {
+      setContainerInfo(null);
+      setContainerStatus("idle");
+      setContainerError(
+        error instanceof Error
+          ? error.message
+          : "Failed to launch the challenge container.",
+      );
+    } finally {
+      setContainerLoading(false);
+    }
+  };
+
+  const handleStopContainer = async () => {
+    setContainerLoading(true);
+    setContainerError(null);
+
+    try {
+      await ctfdApi.deleteWhaleContainer();
+      setContainerInfo(null);
+      setContainerStatus("idle");
+    } catch (error) {
+      setContainerError(
+        error instanceof Error
+          ? error.message
+          : "Failed to stop the challenge container.",
+      );
+    } finally {
+      setContainerLoading(false);
+    }
+  };
+
+  const handleRenewContainer = async () => {
+    setContainerLoading(true);
+    setContainerError(null);
+
+    try {
+      await ctfdApi.renewWhaleContainer(challenge.id);
+      const statusResponse = await ctfdApi.getWhaleContainer(challenge.id);
+      const normalized = normalizeWhaleContainer(statusResponse.data);
+
+      if (normalized) {
+        setContainerInfo(normalized);
+        setContainerStatus("active");
+      }
+    } catch (error) {
+      setContainerError(
+        error instanceof Error
+          ? error.message
+          : "Failed to renew the challenge container.",
+      );
+    } finally {
+      setContainerLoading(false);
+    }
   };
 
   return (
@@ -326,7 +531,7 @@ function ChallengeCard({
 
           {challenge.hasContainer && !isSolved && (
             <div className="mb-4">
-              {containerStatus === "idle" && (
+              {containerStatus === "idle" && !containerLoading && (
                 <button
                   onClick={handleSpawnContainer}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-white uppercase transition-all rounded-lg hover:brightness-110"
@@ -342,7 +547,8 @@ function ChallengeCard({
                 </button>
               )}
 
-              {containerStatus === "spawning" && (
+              {(containerStatus === "loading" ||
+                containerStatus === "spawning") && (
                 <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
                   <div
                     className="w-4 h-4 border-2 rounded-full animate-spin"
@@ -352,7 +558,9 @@ function ChallengeCard({
                     }}
                   />
                   <span className="text-xs text-white/60 font-[Rajdhani] uppercase tracking-wider">
-                    Initializing Environment...
+                    {containerStatus === "spawning"
+                      ? "Initializing Environment..."
+                      : "Checking Container Status..."}
                   </span>
                 </div>
               )}
@@ -366,26 +574,96 @@ function ChallengeCard({
                         Instance Active
                       </span>
                     </div>
-                    <span className="text-[10px] text-white/30 font-[Rajdhani]">
-                      Expires in 59:20
-                    </span>
+                    {containerInfo.expiresText && (
+                      <span className="text-[10px] text-white/30 font-[Rajdhani]">
+                        {containerInfo.expiresText}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 font-mono text-xs text-white/80 bg-black/40 p-2 rounded border border-white/5">
-                    <span className="select-all">
-                      nc {containerInfo.ip} {containerInfo.port}
+                    <span className="select-all break-all">
+                      {containerInfo.displayValue}
                     </span>
                     <button
                       className="ml-auto text-white/40 hover:text-white transition-colors"
                       onClick={() =>
-                        navigator.clipboard.writeText(
-                          `nc ${containerInfo.ip} ${containerInfo.port}`,
-                        )
+                        navigator.clipboard.writeText(containerInfo.copyValue)
                       }
                     >
                       <Copy size={12} />
                     </button>
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {containerInfo.url && (
+                      <a
+                        href={containerInfo.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-white uppercase transition-all rounded-lg hover:brightness-110"
+                        style={{
+                          background: `linear-gradient(135deg, ${categoryColor}40, ${categoryColor}20)`,
+                          border: `1px solid ${categoryColor}60`,
+                          fontFamily: "Rajdhani, sans-serif",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        <ExternalLink size={13} />
+                        Open Instance
+                      </a>
+                    )}
+                    <button
+                      onClick={handleRenewContainer}
+                      disabled={containerLoading}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-white uppercase transition-all rounded-lg disabled:opacity-60"
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        fontFamily: "Rajdhani, sans-serif",
+                        letterSpacing: "1px",
+                      }}
+                    >
+                      Renew
+                    </button>
+                    <button
+                      onClick={handleStopContainer}
+                      disabled={containerLoading}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-white uppercase transition-all rounded-lg disabled:opacity-60"
+                      style={{
+                        background: "rgba(248,113,113,0.08)",
+                        border: "1px solid rgba(248,113,113,0.25)",
+                        fontFamily: "Rajdhani, sans-serif",
+                        letterSpacing: "1px",
+                        color: "#f87171",
+                      }}
+                    >
+                      <X size={13} />
+                      Stop
+                    </button>
+                  </div>
                 </div>
+              )}
+
+              {containerError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-3 rounded-lg"
+                  style={{
+                    background: "rgba(248,113,113,0.1)",
+                    border: "1px solid rgba(248,113,113,0.3)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "Rajdhani, sans-serif",
+                      fontSize: "12px",
+                      color: "#f87171",
+                      margin: 0,
+                    }}
+                  >
+                    {containerError}
+                  </p>
+                </motion.div>
               )}
             </div>
           )}

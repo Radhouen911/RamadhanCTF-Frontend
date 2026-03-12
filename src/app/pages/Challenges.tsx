@@ -10,6 +10,19 @@ import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
 
+const isContainerChallenge = (challenge: ApiChallenge) => {
+  const type = String(challenge.type ?? "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    type === "dynamic_docker" ||
+    type.includes("docker") ||
+    type.includes("container") ||
+    type.includes("whale")
+  );
+};
+
 // Note: solved challenges are now fetched from CTFd API
 
 // Default colors and icons for different categories
@@ -488,7 +501,8 @@ export function Challenges() {
               solved: c.solved_by_me || false,
               description: c.description || "",
               tags: [],
-              hasContainer: false,
+              hasContainer: isContainerChallenge(c),
+              challengeType: c.type,
             })),
           };
         },
