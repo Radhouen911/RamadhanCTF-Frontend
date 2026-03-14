@@ -7,6 +7,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  Fingerprint,
   Flag,
   Globe,
   Lightbulb,
@@ -35,6 +36,7 @@ const iconMap: Record<string, IconFC> = {
   Search: Search as IconFC,
   Eye: Eye as IconFC,
   Sparkles: Sparkles as IconFC,
+  Fingerprint: Fingerprint as IconFC,
 };
 
 interface ChallengePanelProps {
@@ -839,7 +841,7 @@ export function ChallengePanel({
   onClose,
   onChallengeUpdate,
 }: ChallengePanelProps) {
-  const IconComp = iconMap[category.iconName];
+  const IconComp = iconMap[category.iconName] || iconMap["Sparkles"];
   const totalPts = category.challenges.reduce((s, c) => s + c.points, 0);
   const earnedPts = category.challenges
     .filter((c) => solvedIds.has(c.id))

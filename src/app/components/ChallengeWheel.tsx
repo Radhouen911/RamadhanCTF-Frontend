@@ -1,5 +1,13 @@
 import type { LucideProps } from "lucide-react";
-import { Eye, Globe, Lock, Search, Sparkles, Terminal, Fingerprint } from "lucide-react";
+import {
+  Eye,
+  Fingerprint,
+  Globe,
+  Lock,
+  Search,
+  Sparkles,
+  Terminal,
+} from "lucide-react";
 import { motion } from "motion/react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -506,7 +514,7 @@ export function ChallengeWheel({
             const isDimmed =
               selectedCategory !== null && !isSelected && !isHovered;
 
-            const IconComp = iconMap[cat.iconName];
+            const IconComp = iconMap[cat.iconName] || iconMap["Sparkles"];
 
             return (
               <div
