@@ -112,7 +112,7 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
                     marginTop: "-2px",
                   }}
                 >
-                  1446 AH EDITION
+                  1447 AH EDITION
                 </div>
               </div>
             </Link>

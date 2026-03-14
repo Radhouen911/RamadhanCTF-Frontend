@@ -6,7 +6,9 @@ export function Footer() {
       <div className="flex flex-col items-center justify-center gap-2 text-xs font-[Rajdhani] tracking-widest text-white/40 uppercase">
         <div className="flex items-center gap-2">
           <span>Powered by</span>
-          <span className="text-[#fbbf24] font-bold">Engineers Spark ISETCom</span>
+          <span className="text-[#fbbf24] font-bold">
+            Engineers Spark ISETCom
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <span>Theme Designed by</span>

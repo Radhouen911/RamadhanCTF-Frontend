@@ -115,6 +115,9 @@ const getCategoryDefaults = (categoryName: string, index: number) => {
   };
 };
 
+const normalizeCategoryKey = (value?: string | null) =>
+  (value || "").trim().toLowerCase();
+
 // Decorative crescent + lantern SVG for corners
 function CrescentDecor() {
   return (
@@ -470,21 +473,31 @@ export function Challenges() {
       );
 
       // Group challenges by category
-      const categoryMap: Record<string, ApiChallenge[]> = {};
+      const categoryMap: Record<
+        string,
+        { name: string; challenges: ApiChallenge[] }
+      > = {};
       detailedChallenges.forEach((challenge: ApiChallenge) => {
-        const cat = challenge.category || "Misc";
-        if (!categoryMap[cat]) {
-          categoryMap[cat] = [];
+        const categoryName = (challenge.category || "").trim() || "Misc";
+        const categoryKey = normalizeCategoryKey(categoryName) || "misc";
+
+        if (!categoryMap[categoryKey]) {
+          categoryMap[categoryKey] = {
+            name: categoryName,
+            challenges: [],
+          };
         }
-        categoryMap[cat].push(challenge);
+        categoryMap[categoryKey].challenges.push(challenge);
       });
 
       // Convert to category format with dynamic colors
-      const newCategories: Category[] = Object.entries(categoryMap).map(
-        ([categoryName, challenges], index) => {
+      const newCategories: Category[] = Object.values(categoryMap).map(
+        (categoryGroup, index) => {
+          const categoryName = categoryGroup.name;
+          const challenges = categoryGroup.challenges;
           const categoryInfo = getCategoryDefaults(categoryName, index);
 
-          const id = categoryName.toLowerCase().replace(/\s+/g, "");
+          const id = normalizeCategoryKey(categoryName).replace(/\s+/g, "");
           return {
             id,
             name: categoryName,
@@ -641,7 +654,7 @@ export function Challenges() {
                 color: "rgba(212,165,32,0.45)",
               }}
             >
-              Ramadan 1446 AH &nbsp;·&nbsp; Night of Code
+              Ramadan 1447 AH &nbsp;·&nbsp; Night of Code
             </p>
 
             {/* Decorative divider */}

@@ -9,6 +9,7 @@ setup.env
 worker-join.txt
 # testing
 coverage
+interactive-setup-guide.html
 
 # build outputs
 dist
@@ -47,3 +48,4 @@ guidelines/
 
 # temporary files
 test-render.js
+interactive-setup-guide.html

@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { TeamRequiredRoute } from "./components/TeamRequiredRoute";
 import { Admin } from "./pages/Admin";
 import { Angel } from "./pages/Angel";
 import { Challenges } from "./pages/Challenges";
@@ -25,8 +26,13 @@ export const router = createBrowserRouter([
     Component: ProtectedRoute,
     children: [
       { path: "/admin", Component: Admin },
-      { path: "/challenges", Component: Challenges },
-      { path: "/scoreboard", Component: Scoreboard },
+      {
+        Component: TeamRequiredRoute,
+        children: [
+          { path: "/challenges", Component: Challenges },
+          { path: "/scoreboard", Component: Scoreboard },
+        ],
+      },
       { path: "/teams", Component: Teams },
       { path: "/team", Component: TeamManagement },
       { path: "/teams/:teamId", Component: PublicTeamProfile },
