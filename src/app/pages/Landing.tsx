@@ -139,9 +139,14 @@ export function Landing() {
   useEffect(() => {
     const syncCtfTiming = () => {
       try {
-        const init = (window as Window & {
-          init?: { ctfStart?: string | number | null; ctfEnd?: string | number | null };
-        }).init;
+        const init = (
+          window as Window & {
+            init?: {
+              ctfStart?: string | number | null;
+              ctfEnd?: string | number | null;
+            };
+          }
+        ).init;
 
         const start = init?.ctfStart ?? null;
         const end = init?.ctfEnd ?? null;
@@ -297,26 +302,7 @@ export function Landing() {
 
         {/* Timer bar removed as requested */}
 
-        {ctfStatus === "active" && (
-          <motion.div
-            initial={{ opacity: 0, x: -16, y: 0 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
-            className="fixed top-4 left-4 z-50"
-            style={{ minWidth: 'auto' }}
-          >
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/20 px-3 py-1 shadow-md">
-              <span className="font-[Rajdhani] text-xs tracking-widest uppercase text-emerald-400/80">Ends In</span>
-              <span className="font-mono text-xs text-white">
-                {String(timeLeft.days).padStart(2, "0")}d :
-                {String(timeLeft.hours).padStart(2, "0")}h :
-                {String(timeLeft.minutes).padStart(2, "0")}m :
-                {String(timeLeft.seconds).padStart(2, "0")}s
-              </span>
-              <span className="font-[Rajdhani] text-xs text-slate-200/80 ml-2">Duration: {formatDuration(duration)}</span>
-            </div>
-          </motion.div>
-        )}
+        {/* Timer bar and duration removed as requested */}
 
         {ctfStatus === "ended" && (
           <motion.div
@@ -359,7 +345,7 @@ export function Landing() {
             ? [
                 { label: "Teams", value: "--" },
                 { label: "Challenges", value: "--" },
-                { label: "Duration", value: "48H" },
+                // Duration removed
               ]
             : [
                 {
@@ -374,7 +360,7 @@ export function Landing() {
                       ? stats.totalChallenges.toString()
                       : "0",
                 },
-                { label: "Duration", value: durationLabel },
+                // Duration removed
               ]
           ).map((stat, i) => (
             <div key={i} className="flex flex-col items-center">
