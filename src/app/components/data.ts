@@ -10,6 +10,7 @@ export interface Challenge {
   tags: string[];
   hasContainer?: boolean;
   challengeType?: string;
+  files?: string[];
 }
 
 export interface Category {

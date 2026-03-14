@@ -531,6 +531,50 @@ function ChallengeCard({
             </div>
           )}
 
+          {challenge.files && challenge.files.length > 0 && (
+            <div className="mb-3">
+              <p
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontSize: "11px",
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)",
+                  marginBottom: "6px",
+                }}
+              >
+                Files
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {challenge.files.map((file, idx) => {
+                  const fileName =
+                    file.split("?")[0].split("/").pop() || `file_${idx + 1}`;
+                  return (
+                    <a
+                      key={idx}
+                      href={file}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all hover:brightness-110"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        fontFamily: "Rajdhani, sans-serif",
+                        fontSize: "12px",
+                        color: "rgba(255,255,255,0.6)",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <ExternalLink size={12} style={{ flexShrink: 0 }} />
+                      <span style={{ wordBreak: "break-all" }}>{fileName}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {challenge.hasContainer && !isSolved && (
             <div className="mb-4">
               {containerStatus === "idle" && !containerLoading && (
@@ -677,7 +721,7 @@ function ChallengeCard({
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="CTF{flag_here}"
+                      placeholder="Spark{flag_here}"
                       value={flagInput}
                       onChange={(e) => setFlagInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -782,21 +826,6 @@ function ChallengeCard({
                     }}
                   >
                     <Flag size={12} /> Submit Flag
-                  </button>
-                  <button
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "8px",
-                      padding: "8px 12px",
-                      color: "rgba(255,255,255,0.4)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <ExternalLink size={13} />
                   </button>
                 </div>
               )}

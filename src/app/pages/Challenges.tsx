@@ -517,6 +517,7 @@ export function Challenges() {
               tags: [],
               hasContainer: isContainerChallenge(c),
               challengeType: c.type,
+              files: c.files || [],
             })),
           };
         },

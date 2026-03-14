@@ -30,6 +30,7 @@ interface Challenge {
   type?: string;
   state?: string;
   max_attempts?: number;
+  files?: string[];
 }
 
 interface WhaleContainer {
