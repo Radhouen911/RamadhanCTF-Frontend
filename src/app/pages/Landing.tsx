@@ -20,6 +20,78 @@ interface EventStats {
   totalTeams: number;
 }
 
+interface CountdownState {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+interface CtfTimingConfig {
+  start: string | number | null;
+  end: string | number | null;
+}
+
+type CtfStatus = "loading" | "before" | "active" | "ended";
+
+const ZERO_TIME: CountdownState = {
+  days: 0,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+};
+
+const parseCtfDate = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value === "number") {
+    return value > 1000000000 ? new Date(value * 1000) : new Date(value);
+  }
+
+  const numericValue = Number.parseInt(value, 10);
+  if (!Number.isNaN(numericValue) && numericValue > 1000000000) {
+    return new Date(numericValue * 1000);
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDuration = (
+  start: string | number | null,
+  end: string | number | null,
+) => {
+  const startDate = parseCtfDate(start);
+  const endDate = parseCtfDate(end);
+
+  if (!startDate || !endDate) {
+    return "--";
+  }
+
+  const diffMs = endDate.getTime() - startDate.getTime();
+  if (diffMs <= 0) {
+    return "--";
+  }
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}D ${hours}H` : `${days}D`;
+  }
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}H ${minutes}M` : `${hours}H`;
+  }
+
+  return `${Math.max(minutes, 1)}M`;
+};
+
 export function Landing() {
   const [stats, setStats] = useState<EventStats>({
     totalChallenges: 0,
@@ -27,6 +99,10 @@ export function Landing() {
     totalTeams: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [ctfStatus, setCtfStatus] = useState<CtfStatus>("loading");
+  const [ctfConfig, setCtfConfig] = useState<CtfTimingConfig | null>(null);
+  const [timeLeft, setTimeLeft] = useState<CountdownState>(ZERO_TIME);
+  const [durationLabel, setDurationLabel] = useState("--");
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -59,6 +135,87 @@ export function Landing() {
 
     fetchEventData();
   }, []);
+
+  useEffect(() => {
+    const syncCtfTiming = () => {
+      try {
+        const init = (window as Window & {
+          init?: { ctfStart?: string | number | null; ctfEnd?: string | number | null };
+        }).init;
+
+        const start = init?.ctfStart ?? null;
+        const end = init?.ctfEnd ?? null;
+
+        setCtfConfig({ start, end });
+        setDurationLabel(formatDuration(start, end));
+
+        const now = new Date();
+        const startDate = parseCtfDate(start);
+        const endDate = parseCtfDate(end);
+
+        if (!startDate) {
+          setCtfStatus("active");
+          return;
+        }
+
+        if (now < startDate) {
+          setCtfStatus("before");
+          return;
+        }
+
+        if (endDate && now > endDate) {
+          setCtfStatus("ended");
+          return;
+        }
+
+        setCtfStatus("active");
+      } catch (error) {
+        console.error("[Landing Timer] Failed to load CTF timing:", error);
+        setCtfStatus("active");
+      }
+    };
+
+    syncCtfTiming();
+    const refresh = window.setInterval(syncCtfTiming, 30000);
+
+    return () => window.clearInterval(refresh);
+  }, []);
+
+  useEffect(() => {
+    if (!ctfConfig || ctfStatus !== "before") {
+      setTimeLeft(ZERO_TIME);
+      return;
+    }
+
+    const startDate = parseCtfDate(ctfConfig.start);
+    if (!startDate) {
+      setTimeLeft(ZERO_TIME);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const difference = startDate.getTime() - now.getTime();
+
+      if (difference <= 0) {
+        setTimeLeft(ZERO_TIME);
+        setCtfStatus("active");
+        return;
+      }
+
+      setTimeLeft({
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / (1000 * 60)) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      });
+    };
+
+    calculateTimeLeft();
+    const timer = window.setInterval(calculateTimeLeft, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [ctfConfig, ctfStatus]);
 
   return (
     <div className="relative h-screen flex flex-col overflow-hidden bg-[#060b15] text-white">
@@ -105,7 +262,7 @@ export function Landing() {
         >
           <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
           <span className="font-[Rajdhani] text-amber-400 text-xs tracking-[2px] font-bold uppercase">
-            Ramadan 2026 EDITION
+            Ramadan 1447 AH Edition
           </span>
         </motion.div>
 
@@ -137,6 +294,42 @@ export function Landing() {
           <br className="hidden md:block" />
           Compete in challenges under the crescent moon.
         </motion.p>
+
+        {/* Timer bar removed as requested */}
+
+        {ctfStatus === "active" && (
+          <motion.div
+            initial={{ opacity: 0, x: -16, y: 0 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
+            className="fixed top-4 left-4 z-50"
+            style={{ minWidth: 'auto' }}
+          >
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/20 px-3 py-1 shadow-md">
+              <span className="font-[Rajdhani] text-xs tracking-widest uppercase text-emerald-400/80">Ends In</span>
+              <span className="font-mono text-xs text-white">
+                {String(timeLeft.days).padStart(2, "0")}d :
+                {String(timeLeft.hours).padStart(2, "0")}h :
+                {String(timeLeft.minutes).padStart(2, "0")}m :
+                {String(timeLeft.seconds).padStart(2, "0")}s
+              </span>
+              <span className="font-[Rajdhani] text-xs text-slate-200/80 ml-2">Duration: {formatDuration(duration)}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {ctfStatus === "ended" && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
+            className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-5 py-3 backdrop-blur-md"
+          >
+            <p className="font-[Rajdhani] text-sm md:text-base tracking-[3px] uppercase text-rose-300 font-bold">
+              CTF Has Ended — Thanks For Participating
+            </p>
+          </motion.div>
+        )}
 
         {/* CTA Button */}
         <motion.div
@@ -181,7 +374,7 @@ export function Landing() {
                       ? stats.totalChallenges.toString()
                       : "0",
                 },
-                { label: "Duration", value: "48H" },
+                { label: "Duration", value: durationLabel },
               ]
           ).map((stat, i) => (
             <div key={i} className="flex flex-col items-center">
