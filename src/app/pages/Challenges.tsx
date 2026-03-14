@@ -52,8 +52,8 @@ const categoryDefaults = [
     glowColor: "rgba(248, 113, 113, 0.6)",
   },
   {
-    pattern: /forensics?/i,
-    iconName: "Search",
+    pattern: /forensics?|foren/i,
+    iconName: "Fingerprint",
     color: "#34d399",
     darkColor: "#064e3b",
     midColor: "#059669",
@@ -100,9 +100,10 @@ const fallbackColors = [
 ];
 
 const getCategoryDefaults = (categoryName: string, index: number) => {
-  // Try to match category name with known patterns
+  // Normalize category name for robust matching
+  const normalized = (categoryName || "").trim().toLowerCase();
   for (const def of categoryDefaults) {
-    if (def.pattern.test(categoryName)) {
+    if (def.pattern.test(normalized)) {
       return def;
     }
   }
