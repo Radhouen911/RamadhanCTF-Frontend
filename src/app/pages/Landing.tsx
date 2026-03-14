@@ -345,7 +345,7 @@ export function Landing() {
             ? [
                 { label: "Teams", value: "--" },
                 { label: "Challenges", value: "--" },
-                // Duration removed
+                { label: "Duration", value: "8H" },
               ]
             : [
                 {
@@ -360,7 +360,7 @@ export function Landing() {
                       ? stats.totalChallenges.toString()
                       : "0",
                 },
-                // Duration removed
+                { label: "Duration", value: "8H" },
               ]
           ).map((stat, i) => (
             <div key={i} className="flex flex-col items-center">
