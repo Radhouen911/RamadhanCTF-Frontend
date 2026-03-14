@@ -1,5 +1,5 @@
 import type { LucideProps } from "lucide-react";
-import { Eye, Globe, Lock, Search, Sparkles, Terminal } from "lucide-react";
+import { Eye, Globe, Lock, Search, Sparkles, Terminal, Fingerprint } from "lucide-react";
 import { motion } from "motion/react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -45,6 +45,7 @@ const iconMap: Record<string, IconFC> = {
   Search: Search as IconFC,
   Eye: Eye as IconFC,
   Sparkles: Sparkles as IconFC,
+  Fingerprint: Fingerprint as IconFC,
 };
 
 interface ChallengeWheelProps {
