@@ -65,7 +65,10 @@ let cachedUsers: ArchiveUser[] | null = null;
 
 async function loadJSON<T>(path: string): Promise<T | null> {
   try {
-    const response = await fetch(path);
+    // Use the base path from the router basename
+    const basePath = "/RamadhanCTF-Frontend";
+    const fullPath = basePath + path;
+    const response = await fetch(fullPath);
     if (!response.ok) return null;
     const data = await response.json();
     return data;
