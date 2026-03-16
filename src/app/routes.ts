@@ -13,19 +13,24 @@ import { Scoreboard } from "./pages/Scoreboard";
 import { TeamManagement } from "./pages/TeamManagement";
 import { Teams } from "./pages/Teams";
 
-export const router = createBrowserRouter([
-  // Public routes — no auth required
-  { path: "/", Component: Landing },
-  { path: "/angel", Component: Angel },
-  { path: "/login", Component: Login },
-  { path: "/register", Component: Register },
-  { path: "/challenges", Component: Challenges },
-  { path: "/scoreboard", Component: Scoreboard },
+export const router = createBrowserRouter(
+  [
+    // Public routes — no auth required
+    { path: "/", Component: Landing },
+    { path: "/angel", Component: Angel },
+    { path: "/login", Component: Login },
+    { path: "/register", Component: Register },
+    { path: "/challenges", Component: Challenges },
+    { path: "/scoreboard", Component: Scoreboard },
 
-  { path: "/admin", Component: Admin },
-  { path: "/teams", Component: Teams },
-  { path: "/team", Component: TeamManagement },
-  { path: "/teams/:teamId", Component: PublicTeamProfile },
-  { path: "/profile", Component: Profile },
-  { path: "/users/:userId", Component: PublicUserProfile },
-]);
+    { path: "/admin", Component: Admin },
+    { path: "/teams", Component: Teams },
+    { path: "/team", Component: TeamManagement },
+    { path: "/teams/:teamId", Component: PublicTeamProfile },
+    { path: "/profile", Component: Profile },
+    { path: "/users/:userId", Component: PublicUserProfile },
+  ],
+  {
+    basename: "/RamadhanCTF-Frontend",
+  },
+);
