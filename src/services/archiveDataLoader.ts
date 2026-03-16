@@ -65,11 +65,18 @@ let cachedUsers: ArchiveUser[] | null = null;
 
 async function loadJSON<T>(path: string): Promise<T | null> {
   try {
-    // Use the base path from the router basename
-    const basePath = "/RamadhanCTF-Frontend";
+    // Dynamically determine the base path from the current URL
+    // For GitHub Pages at /RamadhanCTF-Frontend/, this will be /RamadhanCTF-Frontend
+    const basePath =
+      window.location.pathname.split("/").slice(0, -1).join("/") ||
+      "/RamadhanCTF-Frontend";
     const fullPath = basePath + path;
+    console.log(`Fetching from: ${fullPath}`);
     const response = await fetch(fullPath);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error(`Failed to fetch ${fullPath}: ${response.status}`);
+      return null;
+    }
     const data = await response.json();
     return data;
   } catch (error) {
