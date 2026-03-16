@@ -35,8 +35,8 @@ export default defineConfig({
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ["**/*.svg", "**/*.csv"],
 
-  // Serve at root for localhost:8000
-  base: "/",
+  // Serve at GitHub Pages path
+  base: "/RamadhanCTF-Frontend/",
 
   // Build configuration for root deployment
   build: {
