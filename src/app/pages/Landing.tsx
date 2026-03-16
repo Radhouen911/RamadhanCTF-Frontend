@@ -93,6 +93,8 @@ const formatDuration = (
 };
 
 export function Landing() {
+  // ARCHIVE MODE: No login, just static data
+  // Show a banner that this is an archive version
   const [stats, setStats] = useState<EventStats>({
     totalChallenges: 0,
     totalPoints: 0,
@@ -244,6 +246,15 @@ export function Landing() {
 
       {/* Main Content */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center py-4">
+        {/* ARCHIVE BANNER */}
+        <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-amber-200 font-bold text-sm uppercase tracking-wider">
+          <span>
+            This is an <b>archived</b> version of the Ramadan CTF 1447 website.
+            <br />
+            Login, registration, and submissions are disabled. All data is
+            static for historical reference.
+          </span>
+        </div>
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -317,7 +328,7 @@ export function Landing() {
           </motion.div>
         )}
 
-        {/* CTA Button */}
+        {/* CTA Button (archive mode: just view challenges) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -327,9 +338,11 @@ export function Landing() {
           <Link
             to="/challenges"
             className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 rounded-lg font-[Rajdhani] font-bold text-sm md:text-base tracking-[1.5px] text-white uppercase overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(245,158,11,0.4)]"
+            tabIndex={0}
+            aria-disabled="true"
           >
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-            <span className="relative z-10">Enter Arena</span>
+            <span className="relative z-10">View Challenges</span>
             <ChevronRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1" />
           </Link>
         </motion.div>

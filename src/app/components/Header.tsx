@@ -13,12 +13,11 @@ import {
 } from "lucide-react";
 import type { ElementType } from "react";
 import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router";
+import { Link, NavLink } from "react-router";
 import logoImg from "../../assets/logo.png";
 
 import { useAuth } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationContext";
-import { NotificationPanel } from "./NotificationPanel";
+// Notification imports removed
 
 interface NavItem {
   label: string;
@@ -42,13 +41,11 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { isAuthenticated, user, logout, loading } = useAuth();
-  const { unreadCount } = useNotifications();
-  const navigate = useNavigate();
+  // const { unreadCount } = useNotifications(); // Notification reference removed
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -56,6 +53,31 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
 
   return (
     <>
+      {/* Static archive banner */}
+      <div
+        style={{
+          width: "100%",
+          background: "#fbbf24",
+          color: "#222",
+          fontFamily: "Rajdhani, sans-serif",
+          fontWeight: 700,
+          fontSize: "13px",
+          letterSpacing: "1.5px",
+          textAlign: "center",
+          padding: "6px 0 4px 0",
+          borderBottom: "1px solid #eab308",
+          zIndex: 100,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          maxHeight: "32px",
+          overflow: "hidden",
+        }}
+      >
+        Login, registration, and submissions are disabled. All data is static
+        for historical reference.
+      </div>
       <header
         className="fixed top-0 left-0 right-0 z-50"
         style={{
@@ -64,6 +86,7 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
           WebkitBackdropFilter: "blur(20px)",
           borderBottom: "1px solid rgba(212, 165, 32, 0.2)",
           boxShadow: "0 4px 30px rgba(0,0,0,0.5), 0 1px 0 rgba(212,165,32,0.1)",
+          top: "32px", // push header below banner
         }}
       >
         {/* Top accent line */}
@@ -117,61 +140,58 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
               </div>
             </Link>
 
-            {/* Desktop Nav - Only show when authenticated */}
-            {isAuthenticated && (
-              <nav className="hidden md:flex items-center gap-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.label}
-                      to={item.href}
-                      className={({ isActive }) => `
-                      flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
-                    `}
-                      style={({ isActive }) => ({
-                        fontFamily: "Rajdhani, sans-serif",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        letterSpacing: "1.5px",
-                        color: isActive ? "#fbbf24" : "rgba(255,255,255,0.6)",
-                        background: isActive
-                          ? "rgba(251,191,36,0.1)"
-                          : "transparent",
-                        border: isActive
-                          ? "1px solid rgba(251,191,36,0.25)"
-                          : "1px solid transparent",
-                        textTransform: "uppercase",
-                      })}
-                    >
-                      <Icon size={14} />
-                      {item.label}
-                    </NavLink>
-                  );
-                })}
-
-                {/* Admin button - only visible to admins */}
-                {user?.isAdmin && (
-                  <a
-                    href="/admin"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200"
-                    style={{
+            {/* Desktop Nav - Always show */}
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.label}
+                    to={item.href}
+                    className={({ isActive }) => `
+                    flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
+                  `}
+                    style={({ isActive }) => ({
                       fontFamily: "Rajdhani, sans-serif",
                       fontSize: "13px",
                       fontWeight: "600",
                       letterSpacing: "1.5px",
-                      color: "rgba(192,132,252,0.9)",
-                      background: "rgba(192,132,252,0.1)",
-                      border: "1px solid rgba(192,132,252,0.25)",
+                      color: isActive ? "#fbbf24" : "rgba(255,255,255,0.6)",
+                      background: isActive
+                        ? "rgba(251,191,36,0.1)"
+                        : "transparent",
+                      border: isActive
+                        ? "1px solid rgba(251,191,36,0.25)"
+                        : "1px solid transparent",
                       textTransform: "uppercase",
-                    }}
+                    })}
                   >
-                    <Shield size={14} />
-                    Admin
-                  </a>
-                )}
-              </nav>
-            )}
+                    <Icon size={14} />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+              {/* Admin button - only visible to admins */}
+              {user?.isAdmin && (
+                <a
+                  href="/admin"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200"
+                  style={{
+                    fontFamily: "Rajdhani, sans-serif",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    letterSpacing: "1.5px",
+                    color: "rgba(192,132,252,0.9)",
+                    background: "rgba(192,132,252,0.1)",
+                    border: "1px solid rgba(192,132,252,0.25)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <Shield size={14} />
+                  Admin
+                </a>
+              )}
+            </nav>
 
             {/* Right side: Auth or Score + Profile */}
             <div className="flex items-center gap-3">
@@ -272,12 +292,7 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
                     }}
                   >
                     <Bell size={15} />
-                    {unreadCount > 0 && (
-                      <span
-                        className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                        style={{ background: "#fbbf24" }}
-                      />
-                    )}
+                    {/* Notification bell removed */}
                   </button>
 
                   {/* Profile Dropdown */}
@@ -408,8 +423,8 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
             </div>
           </div>
 
-          {/* Mobile Nav - Only show when authenticated */}
-          {mobileOpen && isAuthenticated && (
+          {/* Mobile Nav - Always show */}
+          {mobileOpen && (
             <div
               className="md:hidden py-3 border-t"
               style={{ borderColor: "rgba(212,165,32,0.15)" }}
@@ -466,7 +481,6 @@ export function Header({ totalPoints = 0, solvedCount = 0 }: HeaderProps) {
           )}
         </div>
       </header>
-      <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
     </>
   );
 }

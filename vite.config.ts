@@ -35,13 +35,13 @@ export default defineConfig({
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ["**/*.svg", "**/*.csv"],
 
-  // Set base path for CTFd theme
-  base: "/themes/Ramadhan/static/",
+  // Serve at root for localhost:8000
+  base: "/",
 
-  // Build configuration for CTFd theme deployment
+  // Build configuration for root deployment
   build: {
-    outDir: "static", // Output to static/ for CTFd
-    assetsDir: "assets", // Assets go to static/assets/
+    outDir: "dist", // Output to dist/ for root
+    assetsDir: "assets", // Assets go to dist/assets/
     emptyOutDir: true, // Clean output before building
   },
 });

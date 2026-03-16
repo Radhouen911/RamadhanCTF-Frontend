@@ -1,3 +1,6 @@
+// File deleted
+// This file contained the useSSENotifications hook which is now removed.
+// All notification-related logic has been eliminated.
 import { useCallback, useEffect, useRef } from "react";
 
 // Debug logs are off by default in production; enable with:

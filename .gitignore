@@ -10,7 +10,6 @@ worker-join.txt
 # testing
 coverage
 interactive-setup-guide.html
-
 # build outputs
 dist
 static

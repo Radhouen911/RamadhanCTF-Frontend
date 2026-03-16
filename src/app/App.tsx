@@ -1,10 +1,7 @@
 import { RouterProvider } from "react-router";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
-import { NotificationDebugBadge } from "./components/NotificationDebugBadge";
-import { NotificationToastProvider } from "./components/NotificationToast";
 import { AuthProvider } from "./context/AuthContext";
 import { ConfigProvider } from "./context/ConfigContext";
-import { NotificationProvider } from "./context/NotificationContext";
 import { router } from "./routes";
 
 export default function App() {
@@ -12,11 +9,7 @@ export default function App() {
     <AppErrorBoundary>
       <AuthProvider>
         <ConfigProvider>
-          <NotificationProvider>
-            <RouterProvider router={router} />
-            <NotificationToastProvider />
-            <NotificationDebugBadge />
-          </NotificationProvider>
+          <RouterProvider router={router} />
         </ConfigProvider>
       </AuthProvider>
     </AppErrorBoundary>

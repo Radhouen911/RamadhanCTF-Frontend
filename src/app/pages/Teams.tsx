@@ -1,24 +1,17 @@
-import { Medal, Search, Shield, Star, Target, Trophy } from "lucide-react";
+import { Search, Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import type { ScoreboardEntry, Team } from "../../services/ctfdApi";
-import { ctfdApi } from "../../services/ctfdApi";
+import { loadArchiveTeams } from "../../services/archiveDataLoader";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
-import { VisibilityNotice } from "../components/VisibilityNotice";
-import { useAuth } from "../context/AuthContext";
-import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
-
-type ConfigMap = Record<string, unknown>;
+import { useAppConfig } from "../context/ConfigContext";
 
 interface TeamRow {
   id: number;
   name: string;
-  rank: number | null;
-  score: number;
   memberCount: number | null;
   avatar: string;
 }
@@ -31,44 +24,6 @@ const debugLog = (...args: unknown[]) => {
   }
 };
 
-const normalizeConfig = (data: unknown): ConfigMap => {
-  if (Array.isArray(data)) {
-    return data.reduce<ConfigMap>((acc, entry) => {
-      if (entry && typeof entry === "object") {
-        const key =
-          "key" in entry ? entry.key : "name" in entry ? entry.name : undefined;
-        const value = "value" in entry ? entry.value : undefined;
-
-        if (typeof key === "string") {
-          acc[key] = value;
-        }
-      }
-      return acc;
-    }, {});
-  }
-
-  if (data && typeof data === "object") {
-    return data as ConfigMap;
-  }
-
-  return {};
-};
-
-const isTeamsModeEnabled = (config: ConfigMap) => {
-  if (typeof config.team_mode === "boolean") {
-    return config.team_mode;
-  }
-
-  if (!("user_mode" in config) && !("team_mode" in config)) {
-    return true;
-  }
-
-  const rawMode = String(
-    config.user_mode ?? config.team_mode ?? "",
-  ).toLowerCase();
-  return rawMode === "teams" || rawMode === "team";
-};
-
 const getAvatar = (name: string) => {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "TM";
@@ -76,24 +31,8 @@ const getAvatar = (name: string) => {
   return `${words[0][0] ?? ""}${words[1][0] ?? ""}`.toUpperCase();
 };
 
-const getMemberCount = (team: Team) => {
-  if (typeof team.members_count === "number") {
-    return team.members_count;
-  }
-
-  if (Array.isArray(team.members)) {
-    return team.members.length;
-  }
-
-  return null;
-};
-
-const isForbiddenError = (error: unknown) =>
-  error instanceof Error && error.message.includes("403");
-
 export function Teams() {
-  const { user, isAuthenticated } = useAuth();
-  const { scoreVisibility, loading: configLoading } = useAppConfig();
+  const { loading: configLoading } = useAppConfig();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [teamsEnabled, setTeamsEnabled] = useState(true);
@@ -104,11 +43,6 @@ export function Teams() {
     description: string;
   } | null>(null);
 
-  const canViewScores = canAccessVisibility(scoreVisibility, {
-    isAuthenticated,
-    isAdmin: Boolean(user?.isAdmin),
-  });
-
   useEffect(() => {
     let mounted = true;
 
@@ -116,100 +50,28 @@ export function Teams() {
       return;
     }
 
-    const fetchAllTeams = async () => {
-      const allTeams: Team[] = [];
-      let page = 1;
-      let hasNext = true;
-
-      while (hasNext && page <= 100) {
-        const response = await ctfdApi.getTeams({ page });
-        allTeams.push(...(response.data || []));
-
-        const pagination = response.meta?.pagination;
-        if (!pagination) {
-          hasNext = false;
-        } else if (typeof pagination.pages === "number") {
-          hasNext = page < pagination.pages;
-        } else {
-          hasNext = Boolean(pagination.next);
-        }
-
-        page += 1;
-      }
-
-      return Array.from(
-        new Map(allTeams.map((team) => [team.id, team])).values(),
-      );
-    };
-
     const loadTeams = async () => {
       setLoading(true);
       setErrorState(null);
 
       try {
-        const configResponse = await ctfdApi.getConfig().catch(() => null);
-        const config = normalizeConfig(configResponse?.data);
-        const enabled = isTeamsModeEnabled(config);
+        // Use archive data instead of API
+        const archiveTeams = await loadArchiveTeams();
 
         if (!mounted) {
           return;
         }
 
-        setTeamsEnabled(enabled);
+        setTeamsEnabled(true);
 
-        if (!enabled) {
-          setTeams([]);
-          return;
-        }
-
-        const [teamData, scoreboardData] = await Promise.all([
-          fetchAllTeams(),
-          canViewScores
-            ? ctfdApi
-                .getScoreboard()
-                .then((response) => response.data || [])
-                .catch(() => [] as ScoreboardEntry[])
-            : Promise.resolve([] as ScoreboardEntry[]),
-        ]);
-
-        const scoreboardById = new Map(
-          scoreboardData.map((entry) => [entry.account_id, entry]),
-        );
-
-        const teamRows = teamData
-          .map((team) => {
-            const scoreboardEntry = scoreboardById.get(team.id);
-            return {
-              id: team.id,
-              name: team.name,
-              rank: canViewScores
-                ? (scoreboardEntry?.place ?? team.place ?? null)
-                : null,
-              score: canViewScores
-                ? (scoreboardEntry?.score ?? team.score ?? 0)
-                : 0,
-              memberCount: getMemberCount(team),
-              avatar: getAvatar(team.name),
-            };
-          })
-          .sort((a, b) => {
-            if (!canViewScores) {
-              return a.name.localeCompare(b.name);
-            }
-            if (a.rank !== null && b.rank !== null) {
-              return a.rank - b.rank;
-            }
-            if (a.rank !== null) {
-              return -1;
-            }
-            if (b.rank !== null) {
-              return 1;
-            }
-            if (b.score !== a.score) {
-              return b.score - a.score;
-            }
-            return a.name.localeCompare(b.name);
-          });
+        const teamRows = archiveTeams
+          .map((team) => ({
+            id: team.id,
+            name: team.name,
+            memberCount: team.members_count,
+            avatar: getAvatar(team.name),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
 
         if (mounted) {
           setTeams(teamRows);
@@ -220,23 +82,11 @@ export function Teams() {
         }
 
         debugLog("[Teams] Failed to load teams page data", error);
-
-        if (isForbiddenError(error)) {
-          setErrorState({
-            title: isAuthenticated
-              ? "Teams are currently unavailable"
-              : "Log in to view teams",
-            description: isAuthenticated
-              ? "This event is currently hiding team information or your account does not have access to it yet."
-              : "Please sign in to view participating teams for this event.",
-          });
-        } else {
-          setErrorState({
-            title: "Unable to load teams",
-            description:
-              "We could not load the teams list right now. Please refresh the page and try again.",
-          });
-        }
+        setErrorState({
+          title: "Unable to load teams",
+          description:
+            "We could not load the teams list right now. Please refresh the page and try again.",
+        });
       } finally {
         if (mounted) {
           setLoading(false);
@@ -249,7 +99,7 @@ export function Teams() {
     return () => {
       mounted = false;
     };
-  }, [canViewScores, configLoading, isAuthenticated]);
+  }, [configLoading]);
 
   const filteredTeams = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -262,13 +112,6 @@ export function Teams() {
 
   const stats = useMemo(() => {
     const totalTeams = teams.length;
-    const rankedTeams = teams.filter((team) => team.rank !== null).length;
-    const averageScore =
-      totalTeams > 0
-        ? Math.round(
-            teams.reduce((sum, team) => sum + team.score, 0) / totalTeams,
-          )
-        : 0;
 
     return [
       {
@@ -277,20 +120,8 @@ export function Teams() {
         icon: Shield,
         color: "#fbbf24",
       },
-      {
-        label: canViewScores ? "Ranked Teams" : "Rank Data",
-        value: canViewScores ? rankedTeams.toLocaleString() : "Hidden",
-        icon: Trophy,
-        color: "#34d399",
-      },
-      {
-        label: canViewScores ? "Avg Team Score" : "Team Score",
-        value: canViewScores ? averageScore.toLocaleString() : "Hidden",
-        icon: Target,
-        color: "#c084fc",
-      },
     ];
-  }, [canViewScores, teams]);
+  }, [teams]);
 
   return (
     <div
@@ -302,10 +133,7 @@ export function Teams() {
     >
       <StarField />
       <IslamicPattern />
-      <Header
-        totalPoints={canViewScores ? (user?.score ?? 0) : 0}
-        solvedCount={0}
-      />
+      <Header totalPoints={0} solvedCount={0} />
 
       <div className="relative z-10 pt-28 px-4 pb-20 max-w-6xl mx-auto flex-1 w-full">
         <motion.div
@@ -337,22 +165,11 @@ export function Teams() {
               color: "rgba(255,255,255,0.4)",
             }}
           >
-            {canViewScores
-              ? "Live team standings powered by CTFd"
-              : "Team rankings are hidden during dark hour"}
+            Browse all participating teams
           </p>
         </motion.div>
 
-        {!canViewScores && (
-          <div className="mb-8">
-            <VisibilityNotice
-              title="Team scores are hidden"
-              description="Dark hour is active right now. Team rank and score data are hidden for non-admin players, but you can still browse participating teams."
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8">
           {stats.map((stat, idx) => (
             <motion.div
               key={stat.label}
@@ -528,22 +345,12 @@ export function Teams() {
                     borderBottom: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  {canViewScores && (
-                    <th className="p-4 pl-8 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
-                      Rank
-                    </th>
-                  )}
                   <th className="p-4 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
                     Team Name
                   </th>
                   <th className="p-4 text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
                     Members
                   </th>
-                  {canViewScores && (
-                    <th className="p-4 pr-8 text-right text-white/40 font-medium uppercase text-xs tracking-wider font-[Rajdhani]">
-                      Score
-                    </th>
-                  )}
                 </tr>
               </thead>
               <tbody>
@@ -557,15 +364,6 @@ export function Teams() {
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
                     onClick={() => navigate(`/teams/${team.id}`)}
                   >
-                    {canViewScores && (
-                      <td className="p-4 pl-8">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-[Rajdhani] font-bold text-lg ${team.rank === 1 ? "bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/40" : team.rank === 2 ? "bg-[#94a3b8]/20 text-[#94a3b8] border border-[#94a3b8]/40" : team.rank === 3 ? "bg-[#b45309]/20 text-[#b45309] border border-[#b45309]/40" : "text-white/40"}`}
-                        >
-                          {team.rank ?? "—"}
-                        </div>
-                      </td>
-                    )}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-white/10 to-white/5 text-white/80 border border-white/10">
@@ -574,30 +372,11 @@ export function Teams() {
                         <span className="text-white font-[Rajdhani] font-semibold tracking-wide text-lg">
                           {team.name}
                         </span>
-                        {canViewScores &&
-                          team.rank !== null &&
-                          team.rank <= 3 && (
-                            <Medal size={14} className="text-[#fbbf24]" />
-                          )}
                       </div>
                     </td>
                     <td className="p-4 text-white/60 font-[Rajdhani] text-lg font-medium">
                       {team.memberCount ?? "—"}
                     </td>
-                    {canViewScores && (
-                      <td className="p-4 pr-8 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Star
-                            size={14}
-                            className="text-[#fbbf24]"
-                            fill="#fbbf24"
-                          />
-                          <span className="text-[#fbbf24] font-[Rajdhani] font-bold text-xl">
-                            {team.score.toLocaleString()}
-                          </span>
-                        </div>
-                      </td>
-                    )}
                   </motion.tr>
                 ))}
               </tbody>

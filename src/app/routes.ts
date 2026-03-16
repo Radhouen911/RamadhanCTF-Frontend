@@ -1,6 +1,5 @@
 import { createBrowserRouter } from "react-router";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { TeamRequiredRoute } from "./components/TeamRequiredRoute";
+// Auth routes removed for static archive
 import { Admin } from "./pages/Admin";
 import { Angel } from "./pages/Angel";
 import { Challenges } from "./pages/Challenges";
@@ -20,24 +19,13 @@ export const router = createBrowserRouter([
   { path: "/angel", Component: Angel },
   { path: "/login", Component: Login },
   { path: "/register", Component: Register },
+  { path: "/challenges", Component: Challenges },
+  { path: "/scoreboard", Component: Scoreboard },
 
-  // Protected routes — redirect to /login when not authenticated
-  {
-    Component: ProtectedRoute,
-    children: [
-      { path: "/admin", Component: Admin },
-      {
-        Component: TeamRequiredRoute,
-        children: [
-          { path: "/challenges", Component: Challenges },
-          { path: "/scoreboard", Component: Scoreboard },
-        ],
-      },
-      { path: "/teams", Component: Teams },
-      { path: "/team", Component: TeamManagement },
-      { path: "/teams/:teamId", Component: PublicTeamProfile },
-      { path: "/profile", Component: Profile },
-      { path: "/users/:userId", Component: PublicUserProfile },
-    ],
-  },
+  { path: "/admin", Component: Admin },
+  { path: "/teams", Component: Teams },
+  { path: "/team", Component: TeamManagement },
+  { path: "/teams/:teamId", Component: PublicTeamProfile },
+  { path: "/profile", Component: Profile },
+  { path: "/users/:userId", Component: PublicUserProfile },
 ]);

@@ -1,6 +1,5 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import {
   Area,
   AreaChart,
@@ -11,15 +10,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ScoreboardEntry, Team } from "../../services/ctfdApi";
+// import types removed: ScoreboardEntry, Team
+import { getArchiveScoreboard } from "../../services/archiveDataLoader";
 import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
-import { VisibilityNotice } from "../components/VisibilityNotice";
-import { useAuth } from "../context/AuthContext";
-import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
+// Auth and config removed for static archive
 
 const CHART_COLORS = [
   "#fbbf24",
@@ -54,14 +52,15 @@ type ScoreboardRow = {
   name: string;
   score: number;
   place: number | null;
+  isTeam?: boolean;
 };
 
 const toNormalizedPlace = (value: number | null | undefined) =>
   typeof value === "number" && value > 0 ? value : null;
 
 function mergeStandings(
-  scoreboardEntries: ScoreboardEntry[],
-  teams: Team[],
+  scoreboardEntries: any[],
+  teams: any[],
 ): ScoreboardRow[] {
   const merged = new Map<number, ScoreboardRow>();
 
@@ -82,6 +81,7 @@ function mergeStandings(
         name: existing.name || team.name,
         score: existing.score ?? team.score ?? 0,
         place: existing.place ?? toNormalizedPlace(team.place),
+        isTeam: true,
       });
       return;
     }
@@ -91,6 +91,7 @@ function mergeStandings(
       name: team.name,
       score: team.score ?? 0,
       place: toNormalizedPlace(team.place),
+      isTeam: true,
     });
   });
 
@@ -111,20 +112,26 @@ function mergeStandings(
   });
 }
 
-function buildChartData(topData: Record<string, TopTeamData>): {
+function buildChartData(topData: any[]): {
   chartPoints: ChartPoint[];
   teamNames: string[];
 } {
-  const teamNames = Object.values(topData).map((t) => t.name);
+  const teamNames = topData.map((t) => t.name);
 
   // Collect all solve timestamps
   const allDates = new Set<string>();
-  Object.values(topData).forEach((team) => {
-    team.solves.forEach((solve) => {
-      // Round to nearest hour for grouping
-      const d = new Date(solve.date);
-      d.setMinutes(0, 0, 0);
-      allDates.add(d.toISOString());
+  topData.forEach((team) => {
+    team.solves.forEach((solve: any) => {
+      if (!solve.date) return;
+      try {
+        // Round to nearest hour for grouping
+        const d = new Date(solve.date);
+        if (Number.isNaN(d.getTime())) return;
+        d.setMinutes(0, 0, 0);
+        allDates.add(d.toISOString());
+      } catch {
+        // Skip invalid dates
+      }
     });
   });
 
@@ -132,110 +139,51 @@ function buildChartData(topData: Record<string, TopTeamData>): {
 
   // Build cumulative score per team at each time point
   const chartPoints: ChartPoint[] = sortedDates.map((isoTime) => {
-    const label = new Date(isoTime).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const point: ChartPoint = { name: label };
-    Object.values(topData).forEach((team) => {
-      const cumScore = team.solves
-        .filter((s) => new Date(s.date) <= new Date(isoTime))
-        .reduce((sum, s) => sum + s.value, 0);
-      point[team.name] = cumScore;
-    });
-    return point;
+    try {
+      const label = new Date(isoTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const point: ChartPoint = { name: label };
+      topData.forEach((team) => {
+        const cumScore = team.solves
+          .filter((s: any) => {
+            if (!s.date) return false;
+            try {
+              return new Date(s.date) <= new Date(isoTime);
+            } catch {
+              return false;
+            }
+          })
+          .reduce((sum: number, s: any) => sum + (s.value ?? 1), 0);
+        point[team.name] = cumScore;
+      });
+      return point;
+    } catch {
+      return { name: "Invalid" };
+    }
   });
 
   return { chartPoints, teamNames };
 }
 
 export function Scoreboard() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { scoreVisibility, loading: configLoading } = useAppConfig();
   const [standings, setStandings] = useState<ScoreboardRow[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Record<number, any[]>>({});
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
   const [chartTeams, setChartTeams] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canViewScores = canAccessVisibility(scoreVisibility, {
-    isAuthenticated,
-    isAdmin: Boolean(user?.isAdmin),
-  });
-
-  const visibilityTitle =
-    scoreVisibility === "hidden"
-      ? "Dark hour is active"
-      : scoreVisibility === "admins"
-        ? "Scoreboard is admin-only"
-        : "Scoreboard is unavailable";
-
-  const visibilityDescription =
-    scoreVisibility === "hidden"
-      ? "The scoreboard is temporarily hidden for all non-admin players. Once dark hour ends, standings and solve progress will reappear automatically."
-      : scoreVisibility === "admins"
-        ? "This event is currently configured to only show scoreboard data to administrator accounts."
-        : "Score data is not available for your account right now.";
-
   useEffect(() => {
-    if (authLoading || configLoading) {
-      return;
-    }
-
-    if (!canViewScores) {
-      setStandings([]);
-      setChartPoints([]);
-      setChartTeams([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    const fetchAllTeams = async () => {
-      const allTeams: Team[] = [];
-      let page = 1;
-      let hasNext = true;
-
-      while (hasNext && page <= 100) {
-        const response = await ctfdApi.getTeams({ page });
-        allTeams.push(...(response.data || []));
-
-        const pagination = response.meta?.pagination;
-        if (!pagination) {
-          hasNext = false;
-        } else if (typeof pagination.pages === "number") {
-          hasNext = page < pagination.pages;
-        } else {
-          hasNext = Boolean(pagination.next);
-        }
-
-        page += 1;
-      }
-
-      return Array.from(
-        new Map(allTeams.map((team) => [team.id, team])).values(),
-      );
-    };
-
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const [boardRes, topRes, teamsRes] = await Promise.all([
-          ctfdApi.getScoreboard(),
-          ctfdApi.getScoreboardTop(10).catch(() => null),
-          fetchAllTeams().catch(() => [] as Team[]),
-        ]);
-
-        setStandings(mergeStandings(boardRes.data || [], teamsRes));
-
-        if (topRes?.data && typeof topRes.data === "object") {
-          const { chartPoints: pts, teamNames } = buildChartData(
-            topRes.data as Record<string, TopTeamData>,
-          );
-          setChartPoints(pts);
-          setChartTeams(teamNames);
-        }
+        // Use archive data instead of API
+        const boardRes = await getArchiveScoreboard();
+        setStandings(boardRes.data || []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load scoreboard",
@@ -245,7 +193,29 @@ export function Scoreboard() {
       }
     };
     load();
-  }, [authLoading, canViewScores, configLoading]);
+  }, []);
+
+  const toggleTeam = async (teamId: number) => {
+    // collapse if already expanded
+    if (expanded[teamId]) {
+      setExpanded((s) => ({ ...s, [teamId]: false }));
+      return;
+    }
+
+    // expand: fetch team members if not present
+    if (!teamMembers[teamId]) {
+      try {
+        const res = await ctfdApi.getTeam(teamId).catch(() => ({ data: null }));
+        const teamData = res.data || null;
+        const members = teamData?.members || [];
+        setTeamMembers((m) => ({ ...m, [teamId]: members }));
+      } catch {
+        setTeamMembers((m) => ({ ...m, [teamId]: [] }));
+      }
+    }
+
+    setExpanded((s) => ({ ...s, [teamId]: true }));
+  };
 
   const myScore = useMemo(() => {
     // Could be used to highlight own entry — leave as 0 for now
@@ -274,15 +244,10 @@ export function Scoreboard() {
           </p>
         </motion.div>
 
-        {authLoading || configLoading || loading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-400" />
           </div>
-        ) : !canViewScores ? (
-          <VisibilityNotice
-            title={visibilityTitle}
-            description={visibilityDescription}
-          />
         ) : error ? (
           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg mb-8">
             <p className="text-red-300 font-[Rajdhani] text-sm">{error}</p>
@@ -398,36 +363,80 @@ export function Scoreboard() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {standings.map((entry, i) => (
-                      <tr
-                        key={entry.account_id}
-                        className="group hover:bg-white/5 transition-colors"
-                      >
-                        <td className="py-4 px-6 font-[Rajdhani] font-bold text-lg text-white/50 group-hover:text-white transition-colors">
-                          #{entry.place ?? i + 1}
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center font-[Rajdhani] font-bold text-xs ${
-                                i === 0
-                                  ? "bg-amber-500 text-black"
-                                  : "bg-white/10 text-white"
-                              }`}
-                            >
-                              {entry.name.substring(0, 2).toUpperCase()}
+                      <>
+                        <tr
+                          key={entry.account_id}
+                          className="group hover:bg-white/5 transition-colors"
+                        >
+                          <td className="py-4 px-6 font-[Rajdhani] font-bold text-lg text-white/50 group-hover:text-white transition-colors">
+                            #{entry.place ?? i + 1}
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-[Rajdhani] font-bold text-xs ${
+                                  i === 0
+                                    ? "bg-amber-500 text-black"
+                                    : "bg-white/10 text-white"
+                                }`}
+                              >
+                                {entry.name.substring(0, 2).toUpperCase()}
+                              </div>
+                              <button
+                                onClick={() =>
+                                  entry.isTeam && toggleTeam(entry.account_id)
+                                }
+                                className="font-bold text-slate-200 group-hover:text-amber-400 hover:text-amber-400 transition-colors text-left"
+                                style={{ background: "none", border: "none" }}
+                              >
+                                {entry.name}
+                                {entry.isTeam ? (
+                                  <span className="ml-2 text-xs text-white/40">
+                                    (team)
+                                  </span>
+                                ) : null}
+                              </button>
                             </div>
-                            <Link
-                              to={`/teams/${entry.account_id}`}
-                              className="font-bold text-slate-200 group-hover:text-amber-400 hover:text-amber-400 transition-colors"
-                            >
-                              {entry.name}
-                            </Link>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-right font-[Rajdhani] font-bold text-lg text-amber-400">
-                          {entry.score.toLocaleString()}
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="py-4 px-6 text-right font-[Rajdhani] font-bold text-lg text-amber-400">
+                            {entry.score.toLocaleString()}
+                          </td>
+                        </tr>
+
+                        {entry.isTeam && expanded[entry.account_id] && (
+                          <tr
+                            key={`members-${entry.account_id}`}
+                            className="bg-[#061017]/60"
+                          >
+                            <td colSpan={3} className="py-3 px-6">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                {(teamMembers[entry.account_id] || [])
+                                  .length === 0 ? (
+                                  <div className="text-sm text-white/50">
+                                    No members found
+                                  </div>
+                                ) : (
+                                  (teamMembers[entry.account_id] || []).map(
+                                    (m: any) => (
+                                      <div
+                                        key={m.id}
+                                        className="p-3 bg-black/20 rounded-lg border border-white/5"
+                                      >
+                                        <div className="font-bold text-white">
+                                          {m.name}
+                                        </div>
+                                        <div className="text-sm text-amber-400">
+                                          {(m.score ?? 0).toLocaleString()} pts
+                                        </div>
+                                      </div>
+                                    ),
+                                  )
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>

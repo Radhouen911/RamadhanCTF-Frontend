@@ -1,3 +1,6 @@
+// File deleted
+// This file contained the NotificationDebugBadge component which is now removed.
+// All notification-related logic has been eliminated.
 import { useMemo, useState } from "react";
 import { useNotifications } from "../context/NotificationContext";
 

@@ -11,14 +11,11 @@ import {
   YAxis,
 } from "recharts";
 import type { Team, User, UserAward, UserSolve } from "../../services/ctfdApi";
-import { ctfdApi } from "../../services/ctfdApi";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
 import { VisibilityNotice } from "../components/VisibilityNotice";
-import { useAuth } from "../context/AuthContext";
-import { canAccessVisibility, useAppConfig } from "../context/ConfigContext";
 
 type SolveChartPoint = {
   name: string;
@@ -51,8 +48,7 @@ const buildSolveProgress = (solves: UserSolve[]): SolveChartPoint[] => {
 
 export function PublicUserProfile() {
   const { userId } = useParams();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { scoreVisibility, loading: configLoading } = useAppConfig();
+  // ...existing code...
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
@@ -60,71 +56,10 @@ export function PublicUserProfile() {
   const [solves, setSolves] = useState<UserSolve[]>([]);
   const [awards, setAwards] = useState<UserAward[]>([]);
 
-  const canViewScores = canAccessVisibility(scoreVisibility, {
-    isAuthenticated,
-    isAdmin: Boolean(user?.isAdmin),
-  });
-
   useEffect(() => {
-    if (authLoading || configLoading) {
-      return;
-    }
-
-    const parsed = Number(userId);
-    if (!Number.isFinite(parsed)) {
-      setError("Invalid user profile id");
-      setLoading(false);
-      return;
-    }
-
-    const loadProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const profileResponse = await ctfdApi.getUser(parsed);
-        const profileData = profileResponse.data || null;
-        setProfile(profileData);
-
-        if (!profileData) {
-          setTeam(null);
-          setSolves([]);
-          setAwards([]);
-          return;
-        }
-
-        const [solvesResponse, awardsResponse, teamResponse] =
-          await Promise.all([
-            canViewScores
-              ? ctfdApi
-                  .getUserSolves(parsed)
-                  .catch(() => ({ data: [] as UserSolve[] }))
-              : Promise.resolve({ data: [] as UserSolve[] }),
-            ctfdApi
-              .getUserAwards(parsed)
-              .catch(() => ({ data: [] as UserAward[] })),
-            profileData.team_id
-              ? ctfdApi
-                  .getTeam(profileData.team_id)
-                  .catch(() => ({ data: null as Team | null }))
-              : Promise.resolve({ data: null as Team | null }),
-          ]);
-
-        setSolves(
-          Array.isArray(solvesResponse.data) ? solvesResponse.data : [],
-        );
-        setAwards(
-          Array.isArray(awardsResponse.data) ? awardsResponse.data : [],
-        );
-        setTeam(teamResponse.data || null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [authLoading, canViewScores, configLoading, userId]);
+    // Static archive: no async logic, just clear loading
+    setLoading(false);
+  }, [userId]);
 
   const solveChartData = useMemo(() => buildSolveProgress(solves), [solves]);
 

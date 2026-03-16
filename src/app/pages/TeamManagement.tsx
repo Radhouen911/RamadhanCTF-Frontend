@@ -18,7 +18,6 @@ import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { IslamicPattern } from "../components/IslamicPattern";
 import { StarField } from "../components/StarField";
-import { useAuth } from "../context/AuthContext";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isDev = (import.meta as any).env?.DEV === true;
@@ -37,12 +36,7 @@ interface TeamMember {
 
 export function TeamManagement() {
   const navigate = useNavigate();
-  const {
-    user,
-    isAuthenticated,
-    loading: authLoading,
-    checkAuthStatus,
-  } = useAuth();
+  // Auth removed for static archive
   const [loading, setLoading] = useState(true);
   const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -212,11 +206,7 @@ export function TeamManagement() {
   };
 
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, authLoading, navigate]);
+  // ...existing code...
 
   // Load teams and current team data
   useEffect(() => {
@@ -395,7 +385,7 @@ export function TeamManagement() {
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center overflow-hidden relative">
         <StarField />

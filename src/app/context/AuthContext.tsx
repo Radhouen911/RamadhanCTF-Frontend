@@ -5,9 +5,8 @@ import {
   useEffect,
   useState,
 } from "react";
-import { ctfdApi } from "../../services/ctfdApi";
 
-interface User {
+export interface User {
   id: number;
   name: string;
   email: string;
@@ -53,46 +52,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check authentication status on mount
+  // Static archive: no backend authentication. Default to logged out state.
   useEffect(() => {
-    checkAuthStatus();
+    setUser(null);
+    setIsAuthenticated(false);
+    setLoading(false);
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const userData = await ctfdApi.checkAuth();
-      if (userData) {
-        setUser(userData);
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      // 403 is expected when not logged in — not a real error
-      debugWarn("Auth check failed (expected when logged out):", error);
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const login = async (name: string, password: string) => {
-    try {
-      const response = await ctfdApi.login(name, password);
-      if (response.success && response.data) {
-        const userData = await ctfdApi.checkAuth();
-        setUser(userData || response.data);
-        setIsAuthenticated(true);
-        debugLog("[AuthContext] Login successful");
-        return response;
-      }
-      throw new Error("Invalid username or password.");
-    } catch (error) {
-      console.error("[AuthContext] Login error:", error);
-      throw error;
-    }
+    // Authentication is disabled in archive mode.
+    return {
+      success: false,
+      message: "Authentication disabled in archive mode",
+    };
   };
 
   const register = async (
@@ -101,39 +73,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     registrationCode?: string,
   ) => {
-    try {
-      const response = await ctfdApi.register(
-        name,
-        email,
-        password,
-        registrationCode,
-      );
-      if (response.success && response.data) {
-        const userData = await ctfdApi.checkAuth();
-        setUser(userData || response.data);
-        setIsAuthenticated(true);
-        return response;
-      }
-      throw new Error(
-        "Registration failed. Please check your details and try again.",
-      );
-    } catch (error) {
-      console.error("[AuthContext] Register error:", error);
-      throw error;
-    }
+    // Registration disabled in archive mode.
+    return { success: false, message: "Registration disabled in archive mode" };
   };
 
   const logout = async () => {
-    try {
-      await ctfdApi.logout();
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Clear state anyway
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+    // No-op in archive mode
+    setUser(null);
+    setIsAuthenticated(false);
+    return Promise.resolve();
+  };
+
+  const checkAuthStatus = async () => {
+    // No-op for archive mode
+    setUser(null);
+    setIsAuthenticated(false);
+    setLoading(false);
   };
 
   const value: AuthContextType = {

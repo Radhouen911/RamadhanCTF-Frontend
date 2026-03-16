@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build && node sync-template.js",
+    "build": "vite build ",
     "dev": "vite"
   },
   "dependencies": {

@@ -1,3 +1,6 @@
+// File deleted
+// This file contained the NotificationPanel component which is now removed.
+// All notification-related logic has been eliminated.
 import {
   Bell,
   Check,

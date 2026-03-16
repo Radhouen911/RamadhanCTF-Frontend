@@ -1,957 +1,107 @@
 /// <reference types="vite/client" />
 
-interface PaginationMeta {
-  page?: number;
-  pages?: number;
-  per_page?: number;
-  total?: number;
-  next?: string | null;
-  prev?: string | null;
-}
+import challengesJson from "../../Ramadan CTF.2026-03-16_16_02_07/db/challenges.json";
+import solvesJson from "../../Ramadan CTF.2026-03-16_16_02_07/db/solves.json";
+import teamsJson from "../../Ramadan CTF.2026-03-16_16_02_07/db/teams.json";
+import usersJson from "../../Ramadan CTF.2026-03-16_16_02_07/db/users.json";
 
-interface CTFdResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: {
-    pagination?: PaginationMeta;
-    [key: string]: unknown;
-  };
-}
+import type { User } from "../app/context/AuthContext";
 
-interface Challenge {
-  id: number;
-  name: string;
-  description: string;
-  category: string;
-  value: number;
-  solved_by_me: boolean;
-  requirements?: number[];
-  solves?: number;
-  type?: string;
-  state?: string;
-  max_attempts?: number;
-  files?: string[];
-}
-
-interface WhaleContainer {
-  user_access?: string;
-  ip?: string;
-  host?: string;
-  port?: number | string;
-  nc?: string;
-  expiration?: string;
-  expires?: string;
-  renew?: string;
-  [key: string]: unknown;
-}
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  score: number;
-  place: number;
-  team_id?: number | null;
-}
-
-interface Team {
-  id: number;
-  name: string;
-  score: number;
-  place: number;
-  members?: Array<TeamMember | number>;
-  members_count?: number;
-  captain_id?: number;
-  captain?: TeamMember | number | null;
-  website?: string | null;
-  affiliation?: string | null;
-  country?: string | null;
-  created?: string;
-  hidden?: boolean;
-  banned?: boolean;
-}
-
-interface TeamMember {
-  id: number;
-  name: string;
-  email?: string;
-  score?: number;
-}
-
-interface TeamSettingsUpdate {
-  name?: string;
-  password?: string;
-  confirm?: string;
-  website?: string;
-  affiliation?: string;
-  country?: string;
-}
-
-interface TeamInviteToken {
-  token: string;
-  url?: string;
-}
-
-interface ScoreboardEntry {
-  account_id: number;
-  name: string;
-  score: number;
-  place: number;
-}
-
-interface Token {
-  id: number;
-  value: string;
-  description: string;
-  created: string;
-  expiration: string | null;
-}
-
-interface UserSolve {
-  challenge_id?: number;
-  challenge?: {
-    id?: number;
-    name?: string;
-    category?: string;
-    value?: number;
-  };
-  value?: number;
-  date?: string;
-}
-
-interface UserAward {
-  id?: number;
-  name?: string;
-  description?: string;
-  category?: string;
-  icon?: string;
-  value?: number;
-  date?: string;
-}
-
-interface TeamSolve {
-  challenge_id?: number;
-  value?: number;
-  date?: string;
-  challenge?: {
-    id?: number;
-    name?: string;
-    category?: string;
-    value?: number;
-  };
-}
-
-interface TeamAward {
-  id?: number;
-  name?: string;
-  description?: string;
-  category?: string;
-  icon?: string;
-  value?: number;
-  date?: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const isDev = (import.meta as any).env?.DEV === true;
-const debugLog = (...args: unknown[]) => {
-  if (isDev) {
-    console.log(...args);
-  }
-};
-
-const debugWarn = (...args: unknown[]) => {
-  if (isDev) {
-    console.warn(...args);
-  }
-};
+// Only keep static archive implementation
+// Only keep static archive implementation
 
 class CTFdAPI {
-  private baseURL = "/api/v1";
-  private csrfToken: string | null = null;
+  challenges: any[] = challengesJson.results;
+  teams: any[] = teamsJson.results;
+  users: User[] = usersJson.results;
+  solves: any[] = solvesJson.results;
 
-  private toErrorMessage(errorData: unknown, status: number): string {
-    if (!errorData || typeof errorData !== "object") {
-      return `API request failed: ${status}`;
-    }
+  async getChallenges() {
+    return { success: true, data: this.challenges };
+  }
 
-    const payload = errorData as Record<string, unknown>;
+  async getChallenge(id: number) {
+    const found = this.challenges.find((c) => c.id === id);
+    return { success: !!found, data: found };
+  }
 
-    if (typeof payload.message === "string" && payload.message.trim()) {
-      return payload.message.trim();
-    }
+  // Scoreboard: build from teams and solves
+  async getScoreboard() {
+    // Example: return teams sorted by number of solves (descending)
+    const scoreboard = this.teams
+      .map((team) => ({
+        ...team,
+        solves: this.solves.filter((s) => s.team_id === team.id),
+        score: this.solves.filter((s) => s.team_id === team.id).length,
+      }))
+      .sort((a, b) => b.score - a.score);
+    return { success: true, data: scoreboard };
+  }
 
-    const directData = payload.data;
-    if (typeof directData === "string" && directData.trim()) {
-      return directData.trim();
-    }
+  async getScoreboardTop(count = 10) {
+    const scoreboard = (await this.getScoreboard()).data;
+    return { success: true, data: scoreboard.slice(0, count) };
+  }
 
-    const errors = payload.errors;
-    if (Array.isArray(errors)) {
-      const firstString = errors.find(
-        (entry): entry is string =>
-          typeof entry === "string" && entry.trim().length > 0,
-      );
-      if (firstString) {
-        return firstString.trim();
-      }
+  async getTeams() {
+    return { success: true, data: this.teams };
+  }
 
-      const firstObjMessage = errors
-        .map((entry) =>
-          entry && typeof entry === "object"
-            ? (entry as Record<string, unknown>).message
-            : null,
-        )
-        .find(
-          (value): value is string =>
-            typeof value === "string" && value.trim().length > 0,
+  async getTeam(id: number) {
+    const found = this.teams.find((t) => t.id === id);
+    if (!found) return { success: false, data: null };
+
+    // Build members list from users and compute individual scores from solves
+    const members = this.users
+      .filter((u: any) => u.team_id === id)
+      .map((u: any) => {
+        const memberSolves = this.solves.filter((s) => s.account_id === u.id);
+        const memberScore = memberSolves.reduce(
+          (sum, s) => sum + (s.value ?? 1),
+          0,
         );
-      if (firstObjMessage) {
-        return firstObjMessage.trim();
-      }
-    }
-
-    return `API request failed: ${status}`;
-  }
-
-  private setCSRFToken(token: string | null): void {
-    this.csrfToken = token;
-    (window as any).init = (window as any).init || {};
-    if (token) {
-      (window as any).init.csrfNonce = token;
-    }
-  }
-
-  private async getNonce(): Promise<string | null> {
-    try {
-      const response = await fetch("/", {
-        method: "GET",
-        credentials: "include",
+        return {
+          id: u.id,
+          name: u.name || u.username || "Unknown",
+          email: u.email || null,
+          score: memberScore,
+        };
       });
-      const html = await response.text();
-      const nonceMatch = html.match(/csrfNonce:\s*"([^"]+)"/);
-      if (nonceMatch && nonceMatch[1]) {
-        this.setCSRFToken(nonceMatch[1]);
-        return nonceMatch[1];
-      }
-    } catch (error) {
-      debugWarn("[ctfdApi] Failed to fetch fresh nonce:", error);
-    }
 
-    const fallback = (window as any).init?.csrfNonce || this.csrfToken || null;
-    if (fallback) {
-      this.setCSRFToken(fallback);
-    }
-    return fallback;
-  }
-
-  private async requestWebForm<T>(
-    endpoint: string,
-    data: Record<string, string>,
-  ): Promise<CTFdResponse<T>> {
-    const nonce = (await this.getNonce()) || "";
-    const formData = new URLSearchParams();
-
-    Object.entries(data).forEach(([key, value]) => {
-      if (typeof value === "string" && value.trim().length > 0) {
-        formData.append(key, value);
-      }
-    });
-
-    if (nonce) {
-      formData.append("nonce", nonce);
-    }
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData,
-      credentials: "include",
-    });
-
-    if (!response.ok && !response.redirected) {
-      const text = await response.text();
-      const errorMatch =
-        text.match(/class="alert[^"]*alert-danger[^"]*"[^>]*>([^<]+)/i) ||
-        text.match(/error[^>]*>([^<]+)/i);
-
-      throw new Error(
-        errorMatch?.[1]?.trim() ||
-          `Request failed: ${response.status} ${response.statusText}`,
-      );
-    }
+    // Compute team score (sum of member scores) and include members
+    const teamScore = members.reduce((sum, m) => sum + (m.score ?? 0), 0);
 
     return {
       success: true,
-      data: {} as T,
+      data: {
+        ...found,
+        members,
+        score: found.score ?? teamScore,
+      },
     };
   }
 
-  private async requestSettingsForm<T>(
-    data: Record<string, string>,
-  ): Promise<CTFdResponse<T>> {
-    return this.requestWebForm<T>("/teams/settings", data);
+  async getCurrentUser() {
+    // Archive mode: no auth, return null
+    return { success: false, data: null };
   }
 
-  private normalizeTokenFromData(data: unknown): string | null {
-    if (typeof data === "string" && data.trim().length > 0) {
-      return data.trim();
-    }
-
-    if (Array.isArray(data)) {
-      for (const item of data) {
-        const fromItem = this.normalizeTokenFromData(item);
-        if (fromItem) {
-          return fromItem;
-        }
-      }
-      return null;
-    }
-
-    if (data && typeof data === "object") {
-      const candidateKeys = [
-        "token",
-        "value",
-        "code",
-        "invite",
-        "invite_token",
-      ];
-      for (const key of candidateKeys) {
-        const value = (data as Record<string, unknown>)[key];
-        if (typeof value === "string" && value.trim().length > 0) {
-          return value.trim();
-        }
-      }
-    }
-
-    return null;
+  async getUser(id: number) {
+    const found = this.users.find((u) => u.id === id);
+    return { success: !!found, data: found };
   }
 
-  private buildInviteUrl(token: string): string {
-    return `${window.location.origin}/team?invite=${encodeURIComponent(token)}`;
+  async getUserSolves(id: number) {
+    const solves = this.solves.filter((s) => s.account_id === id);
+    return { success: true, data: solves };
   }
 
-  private normalizeConfigMap(data: unknown): Record<string, unknown> {
-    if (Array.isArray(data)) {
-      return data.reduce<Record<string, unknown>>((acc, entry) => {
-        if (entry && typeof entry === "object") {
-          const key =
-            "key" in entry
-              ? entry.key
-              : "name" in entry
-                ? entry.name
-                : undefined;
-          const value = "value" in entry ? entry.value : undefined;
-          if (typeof key === "string") {
-            acc[key] = value;
-          }
-        }
-        return acc;
-      }, {});
-    }
-
-    if (data && typeof data === "object") {
-      return data as Record<string, unknown>;
-    }
-
-    return {};
+  async getTeamSolves(id: number) {
+    const solves = this.solves.filter((s) => s.team_id === id);
+    return { success: true, data: solves };
   }
 
-  private async verifyTeamModeEnabled(): Promise<void> {
-    const configResponse = await this.getConfig().catch(() => null);
-    const config = this.normalizeConfigMap(configResponse?.data);
-
-    const explicitTeamMode = config.team_mode;
-    if (typeof explicitTeamMode === "boolean" && !explicitTeamMode) {
-      throw new Error("Team mode is disabled in CTFd config.");
-    }
-
-    const rawMode = String(
-      config.user_mode ?? config.team_mode ?? "",
-    ).toLowerCase();
-    if (rawMode && rawMode !== "teams" && rawMode !== "team") {
-      throw new Error("CTFd is not running in team mode.");
-    }
-  }
-
-  private async verifyTeamPermissions(teamId: number): Promise<void> {
-    const meResponse = await this.getCurrentUser();
-    const me = meResponse.data;
-
-    if (!me?.id) {
-      throw new Error("You must be authenticated to manage team invites.");
-    }
-
-    if (me.team_id !== teamId) {
-      throw new Error("You can only generate invites for your own team.");
-    }
-
-    const teamResponse = await this.getTeam(teamId);
-    const team = teamResponse.data;
-    const captainId =
-      typeof team?.captain_id === "number"
-        ? team.captain_id
-        : typeof team?.captain === "number"
-          ? team.captain
-          : team?.captain &&
-              typeof team.captain === "object" &&
-              typeof team.captain.id === "number"
-            ? team.captain.id
-            : null;
-
-    if (captainId !== null && captainId !== me.id) {
-      throw new Error("Only the team captain can generate invite tokens.");
-    }
-  }
-
-  private async verifyInviteEndpointPath(
-    teamId: number,
-    nonce: string | null,
-  ): Promise<string | null> {
-    const candidatePaths = [
-      `/teams/${teamId}/invites`,
-      `/teams/${teamId}/invite`,
-      `/teams/${teamId}/tokens`,
-    ];
-
-    for (const path of candidatePaths) {
-      try {
-        const response = await fetch(`${this.baseURL}${path}`, {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...(nonce
-              ? {
-                  "CSRF-Token": nonce,
-                  "X-CSRF-Token": nonce,
-                }
-              : {}),
-          },
-          body: JSON.stringify(nonce ? { nonce } : {}),
-        });
-
-        if (response.status === 404) {
-          continue;
-        }
-
-        return path;
-      } catch {
-        continue;
-      }
-    }
-
-    return null;
-  }
-
-  async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<CTFdResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
-    let nonce = (window as any).init?.csrfNonce || this.csrfToken;
-
-    const buildHeaders = (currentNonce: string | null) => {
-      const merged: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...((options.headers as Record<string, string>) || {}),
-      };
-
-      if (currentNonce) {
-        merged["CSRF-Token"] = currentNonce;
-        merged["X-CSRF-Token"] = currentNonce;
-      }
-
-      return merged;
-    };
-
-    debugLog(`[ctfdApi] ${options.method || "GET"} ${endpoint}`, {
-      hasCSRF: !!nonce,
-      headers: Object.keys(buildHeaders(nonce)),
-      url: url,
-    });
-
-    try {
-      let response = await fetch(url, {
-        ...options,
-        headers: buildHeaders(nonce),
-        credentials: "include",
-      });
-
-      if (response.status === 403 && endpoint !== "/users/me") {
-        const freshNonce = await this.getNonce();
-        const canRetry = Boolean(freshNonce && freshNonce !== nonce);
-
-        if (canRetry) {
-          nonce = freshNonce;
-          response = await fetch(url, {
-            ...options,
-            headers: buildHeaders(nonce),
-            credentials: "include",
-          });
-        }
-      }
-
-      if (!response.ok) {
-        // Try to get error details from response body
-        let errorData;
-        try {
-          errorData = await response.json();
-          if (
-            !(
-              (endpoint === "/users/me" && response.status === 403) ||
-              (endpoint === "/configs" && response.status === 403)
-            )
-          ) {
-            console.error(
-              `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
-              errorData,
-            );
-          }
-        } catch {
-          if (
-            !(
-              (endpoint === "/users/me" && response.status === 403) ||
-              (endpoint === "/configs" && response.status === 403)
-            )
-          ) {
-            console.error(
-              `[ctfdApi] Request failed: ${response.status} ${response.statusText}`,
-            );
-          }
-        }
-        throw new Error(this.toErrorMessage(errorData, response.status));
-      }
-
-      const data = await response.json();
-      debugLog(`[ctfdApi] ${endpoint} success:`, data.success);
-      return data;
-    } catch (error) {
-      console.error(`[ctfdApi] Error (${endpoint}):`, error);
-      throw error;
-    }
-  }
-
-  // Challenges
-  async getChallenges(): Promise<CTFdResponse<Challenge[]>> {
-    return this.request<Challenge[]>("/challenges");
-  }
-
-  async getChallenge(id: number): Promise<CTFdResponse<Challenge>> {
-    return this.request<Challenge>(`/challenges/${id}`);
-  }
-
-  async submitFlag(
-    challengeId: number,
-    submission: string,
-  ): Promise<CTFdResponse<any>> {
-    debugLog("[ctfdApi] Submitting flag for challenge:", challengeId);
-    return this.request("/challenges/attempt", {
-      method: "POST",
-      body: JSON.stringify({
-        challenge_id: challengeId,
-        submission: submission,
-      }),
-    });
-  }
-
-  // Scoreboard
-  async getScoreboard(): Promise<CTFdResponse<ScoreboardEntry[]>> {
-    return this.request<ScoreboardEntry[]>("/scoreboard");
-  }
-
-  async getScoreboardTop(count: number = 10): Promise<
-    CTFdResponse<
-      Record<
-        string,
-        {
-          id: number;
-          name: string;
-          solves: Array<{
-            challenge_id: number;
-            account_id: number;
-            value: number;
-            date: string;
-          }>;
-        }
-      >
-    >
-  > {
-    return this.request(`/scoreboard/top/${count}`);
-  }
-
-  // Teams
-  async getTeams(params?: {
-    page?: number;
-    perPage?: number;
-  }): Promise<CTFdResponse<Team[]>> {
-    const searchParams = new URLSearchParams();
-
-    if (params?.page) {
-      searchParams.set("page", String(params.page));
-    }
-    if (params?.perPage) {
-      searchParams.set("per_page", String(params.perPage));
-    }
-
-    const suffix = searchParams.toString();
-    return this.request<Team[]>(`/teams${suffix ? `?${suffix}` : ""}`);
-  }
-
-  async getTeam(id: number): Promise<CTFdResponse<Team>> {
-    return this.request<Team>(`/teams/${id}`);
-  }
-
-  async createTeam(
-    name: string,
-    password?: string,
-  ): Promise<CTFdResponse<Team>> {
-    await this.requestWebForm<Team>("/teams/new", {
-      name,
-      password: password?.trim() || "",
-    });
-    return { success: true, data: {} as Team };
-  }
-
-  async joinTeam(options: {
-    teamId?: number;
-    teamName?: string;
-    password?: string;
-    inviteToken?: string;
-  }): Promise<CTFdResponse<User>> {
-    if (!options.teamName?.trim()) {
-      throw new Error("Team name is required to join a team");
-    }
-
-    await this.requestWebForm<User>("/teams/join", {
-      name: options.teamName.trim(),
-      password: options.password?.trim() || "",
-    });
-
-    return { success: true, data: {} as User };
-  }
-
-  async leaveTeam(teamId: number): Promise<CTFdResponse<any>> {
-    const nonce = await this.getNonce();
-    await this.requestWebForm("/teams/leave", nonce ? { nonce } : {});
-    return { success: true, data: {} };
-  }
-
-  async updateTeamSettings(
-    teamId: number,
-    settings: TeamSettingsUpdate,
-  ): Promise<CTFdResponse<Team>> {
-    const nonce = await this.getNonce();
-    const body: Record<string, string> = {};
-
-    if (settings.name !== undefined) body.name = settings.name;
-    if (settings.password !== undefined) body.password = settings.password;
-    if (settings.confirm !== undefined) body.confirm = settings.confirm;
-    if (settings.website !== undefined) body.website = settings.website;
-    if (settings.affiliation !== undefined)
-      body.affiliation = settings.affiliation;
-    if (settings.country !== undefined) body.country = settings.country;
-    if (nonce) body.nonce = nonce;
-
-    try {
-      return await this.request<Team>("/teams/me", {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
-    } catch {
-      await this.requestSettingsForm<Team>({
-        name: settings.name || "",
-        password: settings.password || "",
-        confirm: settings.confirm || "",
-        website: settings.website || "",
-        affiliation: settings.affiliation || "",
-        country: settings.country || "",
-      });
-      return this.getTeam(teamId);
-    }
-  }
-
-  async transferTeamCaptain(captainId: number): Promise<CTFdResponse<Team>> {
-    const nonce = await this.getNonce();
-    return this.request<Team>("/teams/me", {
-      method: "PATCH",
-      body: JSON.stringify(
-        nonce ? { captain_id: captainId, nonce } : { captain_id: captainId },
-      ),
-    });
-  }
-
-  async disbandTeam(): Promise<CTFdResponse<any>> {
-    const nonce = await this.getNonce();
-    return this.request("/teams/me", {
-      method: "DELETE",
-      body: JSON.stringify(nonce ? { nonce } : {}),
-    });
-  }
-
-  async generateTeamInviteCode(): Promise<string> {
-    const nonce = await this.getNonce();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await this.request<any>("/teams/me/members", {
-      method: "POST",
-      body: JSON.stringify(nonce ? { nonce } : {}),
-    });
-    // CTFd returns the invite code in data.code or data
-    const code =
-      response?.data?.code ||
-      response?.data?.invite_code ||
-      response?.data?.token ||
-      (typeof response?.data === "string" ? response.data : null);
-    if (!code) {
-      throw new Error("CTFd did not return an invite code.");
-    }
-    return code as string;
-  }
-
-  // Users
-  async getCurrentUser(): Promise<CTFdResponse<User>> {
-    return this.request<User>("/users/me");
-  }
-
-  async login(name: string, password: string): Promise<CTFdResponse<User>> {
-    try {
-      const nonce = await this.getNonce();
-
-      const formData = new URLSearchParams();
-      formData.append("name", name);
-      formData.append("password", password);
-      if (nonce) {
-        formData.append("nonce", nonce);
-      }
-
-      await fetch("/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData,
-        credentials: "include",
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      try {
-        const userResponse = await this.getCurrentUser();
-        if (userResponse.success && userResponse.data) {
-          return { success: true, data: userResponse.data };
-        }
-      } catch {
-        throw new Error("Your username or password is incorrect");
-      }
-
-      throw new Error("Your username or password is incorrect");
-    } catch (error) {
-      console.error("[ctfdApi] Login error:", error);
-      throw error;
-    }
-  }
-
-  async register(
-    name: string,
-    email: string,
-    password: string,
-    registrationCode?: string,
-  ): Promise<CTFdResponse<User>> {
-    try {
-      const nonce = await this.getNonce();
-
-      const formData = new URLSearchParams();
-      formData.append("name", name);
-      formData.append("email", email);
-      formData.append("password", password);
-      if (registrationCode) {
-        formData.append("registration_code", registrationCode);
-      }
-      if (nonce) {
-        formData.append("nonce", nonce);
-      }
-
-      await fetch("/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData,
-        credentials: "include",
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      try {
-        const userResponse = await this.getCurrentUser();
-        if (userResponse.success && userResponse.data) {
-          return { success: true, data: userResponse.data };
-        }
-      } catch {
-        throw new Error("Registration failed. Please check your information.");
-      }
-
-      throw new Error("Registration failed. Please check your information.");
-    } catch (error) {
-      console.error("[ctfdApi] Registration error:", error);
-      throw error;
-    }
-  }
-
-  async getUser(id: number): Promise<CTFdResponse<User>> {
-    return this.request<User>(`/users/${id}`);
-  }
-
-  async getUserSolves(id: number): Promise<CTFdResponse<UserSolve[]>> {
-    return this.request<UserSolve[]>(`/users/${id}/solves`);
-  }
-
-  async getUserAwards(id: number): Promise<CTFdResponse<UserAward[]>> {
-    return this.request<UserAward[]>(`/users/${id}/awards`);
-  }
-
-  async getTeamSolves(id: number): Promise<CTFdResponse<TeamSolve[]>> {
-    return this.request<TeamSolve[]>(`/teams/${id}/solves`);
-  }
-
-  async getTeamAwards(id: number): Promise<CTFdResponse<TeamAward[]>> {
-    return this.request<TeamAward[]>(`/teams/${id}/awards`);
-  }
-
-  // Config
-  async getConfig(): Promise<CTFdResponse<any>> {
-    return this.request("/configs");
-  }
-
-  async checkAuth(): Promise<(User & { isAdmin: boolean }) | null> {
-    try {
-      const response = await this.getCurrentUser();
-      if (response.success && response.data) {
-        const isAdmin = await this.checkIsAdmin();
-        return { ...response.data, isAdmin };
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  // Admin check
-  async checkIsAdmin(): Promise<boolean> {
-    try {
-      // Try to access an admin-only endpoint
-      const response = await fetch("/admin/statistics", {
-        method: "GET",
-        credentials: "include",
-        redirect: "manual", // Don't follow redirects
-      });
-      // If we get 200, user is admin
-      // If we get 302 (redirect to login), user is not admin
-      // If we get 403, user is not admin
-      return response.status === 200;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  // Tokens
-  async getTokens(): Promise<CTFdResponse<Token[]>> {
-    return this.request<Token[]>("/tokens");
-  }
-
-  async generateToken(data: {
-    description: string;
-    expiration: string | null;
-  }): Promise<CTFdResponse<Token>> {
-    const isAdmin = await this.checkIsAdmin();
-    if (!isAdmin) {
-      throw new Error("Only admin users can generate CTF access tokens.");
-    }
-
-    const nonce = await this.getNonce();
-    return this.request<Token>("/tokens", {
-      method: "POST",
-      body: JSON.stringify({
-        ...data,
-        nonce: nonce,
-      }),
-    });
-  }
-
-  async deleteToken(id: number): Promise<CTFdResponse<any>> {
-    const nonce = await this.getNonce();
-    return this.request(`/tokens/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify({ nonce: nonce }),
-    });
-  }
-
-  async logout(): Promise<{ success: boolean }> {
-    try {
-      await fetch("/logout", {
-        method: "GET",
-        credentials: "include",
-      });
-      this.setCSRFToken(null);
-      return { success: true };
-    } catch (error) {
-      console.error("[ctfdApi] Logout error:", error);
-      throw error;
-    }
-  }
-
-  // Whale Plugin - Container Management
-  async getWhaleContainer(
-    challengeId: number,
-  ): Promise<CTFdResponse<WhaleContainer>> {
-    return this.request<WhaleContainer>(
-      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
-    );
-  }
-
-  async createWhaleContainer(
-    challengeId: number,
-  ): Promise<CTFdResponse<WhaleContainer>> {
-    return this.request<WhaleContainer>(
-      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
-      {
-        method: "POST",
-      },
-    );
-  }
-
-  async deleteWhaleContainer(): Promise<CTFdResponse<Record<string, unknown>>> {
-    return this.request<Record<string, unknown>>(
-      "/plugins/ctfd-whale/container",
-      {
-        method: "DELETE",
-      },
-    );
-  }
-
-  async renewWhaleContainer(
-    challengeId: number,
-  ): Promise<CTFdResponse<WhaleContainer>> {
-    return this.request<WhaleContainer>(
-      `/plugins/ctfd-whale/container?challenge_id=${challengeId}`,
-      {
-        method: "PATCH",
-      },
-    );
-  }
+  // Add more static methods as needed for awards, configs, etc.
 }
 
 export const ctfdApi = new CTFdAPI();
-export type {
-  Challenge as ApiChallenge,
-  ScoreboardEntry,
-  Team,
-  TeamAward,
-  TeamSolve,
-  Token,
-  User,
-  UserAward,
-  UserSolve,
-  WhaleContainer,
-};

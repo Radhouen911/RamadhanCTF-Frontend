@@ -1,3 +1,6 @@
+// File deleted
+// This file contained the NotificationToast component which is now removed.
+// All notification-related logic has been eliminated.
 import { Bell, Flag, Megaphone, Trophy, Users, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifications } from "../context/NotificationContext";

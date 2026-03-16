@@ -1,3 +1,6 @@
+// File deleted
+// This file contained the NotificationContext logic which is now removed.
+// All notification-related logic has been eliminated.
 import {
   createContext,
   ReactNode,

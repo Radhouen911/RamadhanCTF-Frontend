@@ -445,43 +445,23 @@ function ScoreBar({
 }
 
 export function Challenges() {
+  // ARCHIVE MODE: All data is static, no login, no solve/submit
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [solvedIds, setSolvedIds] = useState<Set<number>>(new Set());
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch challenges from CTFd API
-  const fetchChallenges = async () => {
-    try {
-      const response = await ctfdApi.getChallenges();
+  useEffect(() => {
+    // Load static challenges from ctfdApi
+    ctfdApi.getChallenges().then((response) => {
       const apiChallenges = response.data || [];
-
-      // Fetch individual challenge details to get full descriptions
-      const detailedChallenges = await Promise.all(
-        apiChallenges.map(async (challenge: ApiChallenge) => {
-          try {
-            const detailResponse = await ctfdApi.getChallenge(challenge.id);
-            return detailResponse.data;
-          } catch (error) {
-            console.error(
-              `[Challenges] Failed to fetch details for challenge ${challenge.id}:`,
-              error,
-            );
-            // Return original challenge if detail fetch fails
-            return challenge;
-          }
-        }),
-      );
-
       // Group challenges by category
       const categoryMap: Record<
         string,
         { name: string; challenges: ApiChallenge[] }
       > = {};
-      detailedChallenges.forEach((challenge: ApiChallenge) => {
+      apiChallenges.forEach((challenge: ApiChallenge) => {
         const categoryName = (challenge.category || "").trim() || "Misc";
         const categoryKey = normalizeCategoryKey(categoryName) || "misc";
-
         if (!categoryMap[categoryKey]) {
           categoryMap[categoryKey] = {
             name: categoryName,
@@ -490,14 +470,12 @@ export function Challenges() {
         }
         categoryMap[categoryKey].challenges.push(challenge);
       });
-
       // Convert to category format with dynamic colors
       const newCategories: Category[] = Object.values(categoryMap).map(
         (categoryGroup, index) => {
           const categoryName = categoryGroup.name;
           const challenges = categoryGroup.challenges;
           const categoryInfo = getCategoryDefaults(categoryName, index);
-
           const id = normalizeCategoryKey(categoryName).replace(/\s+/g, "");
           return {
             id,
@@ -512,7 +490,7 @@ export function Challenges() {
               name: c.name,
               points: c.value || 0,
               solves: c.solves || 0,
-              solved: c.solved_by_me || false,
+              solved: false, // Archive mode: no solves
               description: c.description || "",
               tags: [],
               hasContainer: isContainerChallenge(c),
@@ -522,66 +500,36 @@ export function Challenges() {
           };
         },
       );
-
       setCategories(newCategories);
-
-      // Update solvedIds based on API response
-      const solvedSet = new Set<number>();
-      apiChallenges.forEach((challenge: ApiChallenge) => {
-        if (challenge.solved_by_me) {
-          solvedSet.add(challenge.id);
-        }
-      });
-      setSolvedIds(solvedSet);
-    } catch (error) {
-      console.error("Failed to fetch challenges:", error);
-      // Don't fall back to mock data - show empty state or error
-      setCategories([]);
-    } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChallenges();
+    });
   }, []);
 
   const handleCategoryClick = (id: string) => {
     setSelectedCategory((prev) => (prev === id ? null : id));
   };
 
-  const handleSolve = (challengeId: number) => {
-    setSolvedIds((prev) => {
-      const next = new Set(prev);
-      next.add(challengeId);
-      return next;
-    });
-  };
+  const solvedIds = new Set<number>();
+  const handleSolve = () => {};
+  const fetchChallenges = () => {};
 
-  // Compute per-category solved counts
   const solvedCounts = useMemo(() => {
     const counts: Record<string, { solved: number; total: number }> = {};
     categories.forEach((cat) => {
-      const solved = cat.challenges.filter((c) => solvedIds.has(c.id)).length;
-      counts[cat.id] = { solved, total: cat.challenges.length };
+      counts[cat.id] = { solved: 0, total: cat.challenges.length };
     });
     return counts;
-  }, [solvedIds, categories]);
+  }, [categories]);
 
   // Global stats
   const totalChallenges = categories.reduce(
     (s, c) => s + c.challenges.length,
     0,
   );
-  const solvedCount = categories.reduce(
-    (s, cat) => s + cat.challenges.filter((c) => solvedIds.has(c.id)).length,
-    0,
-  );
+  const solvedCount = 0; // Archive mode: no solves
   const totalPoints = categories
     .flatMap((c) => c.challenges)
-    .filter((c) => solvedIds.has(c.id))
     .reduce((s, c) => s + c.points, 0);
-
   const selectedCat = categories.find((c) => c.id === selectedCategory);
 
   return (
@@ -592,18 +540,20 @@ export function Challenges() {
           "linear-gradient(160deg, #060b15 0%, #0a0f20 40%, #090d1e 70%, #06090f 100%)",
       }}
     >
+      {/* ARCHIVE BANNER */}
+      <div className="z-20 w-full text-center py-2 bg-amber-500/10 border-b border-amber-400/30 text-amber-200 font-bold text-xs uppercase tracking-wider">
+        This is an <b>archived</b> version of the Ramadan CTF 1447. All data is
+        static and for reference only.
+      </div>
       {/* Layer 0: Background effects */}
       <StarField />
       <IslamicPattern />
-
       {/* Layer 1: Decorative elements */}
       <FloatingStars />
       <CrescentDecor />
       <AmbientOrbs selectedColor={selectedCat?.color} />
-
       {/* Layer 2: Header */}
       <Header totalPoints={totalPoints} solvedCount={solvedCount} />
-
       {/* Layer 3: Main content */}
       {loading ? (
         <div className="relative z-10 flex-1 flex items-center justify-center">
