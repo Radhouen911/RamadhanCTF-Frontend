@@ -78,9 +78,7 @@ async function loadJSON<T>(path: string): Promise<T | null> {
 export async function loadArchiveTeams(): Promise<ArchiveTeam[]> {
   if (cachedTeams) return cachedTeams;
 
-  const data = await loadJSON<{ results: any[] }>(
-    "/Ramadan CTF.2026-03-16_16_02_07/db/teams.json",
-  );
+  const data = await loadJSON<{ results: any[] }>("/db/teams.json");
 
   if (!data?.results) return [];
 
@@ -118,9 +116,7 @@ export async function loadArchiveTeams(): Promise<ArchiveTeam[]> {
 export async function loadArchiveSolves(): Promise<ArchiveSolve[]> {
   if (cachedSolves) return cachedSolves;
 
-  const data = await loadJSON<{ results: ArchiveSolve[] }>(
-    "/Ramadan CTF.2026-03-16_16_02_07/db/solves.json",
-  );
+  const data = await loadJSON<{ results: ArchiveSolve[] }>("/db/solves.json");
 
   cachedSolves = data?.results || [];
   return cachedSolves;
@@ -129,9 +125,7 @@ export async function loadArchiveSolves(): Promise<ArchiveSolve[]> {
 export async function loadArchiveChallenges(): Promise<ArchiveChallenge[]> {
   if (cachedChallenges) return cachedChallenges;
 
-  const data = await loadJSON<{ results: any[] }>(
-    "/Ramadan CTF.2026-03-16_16_02_07/db/challenges.json",
-  );
+  const data = await loadJSON<{ results: any[] }>("/db/challenges.json");
 
   if (!data?.results) return [];
 
@@ -151,9 +145,7 @@ export async function loadArchiveChallenges(): Promise<ArchiveChallenge[]> {
 async function loadArchiveUsers(): Promise<ArchiveUser[]> {
   if (cachedUsers) return cachedUsers;
 
-  const data = await loadJSON<{ results: any[] }>(
-    "/Ramadan CTF.2026-03-16_16_02_07/db/users.json",
-  );
+  const data = await loadJSON<{ results: any[] }>("/db/users.json");
 
   cachedUsers = data?.results || [];
   return cachedUsers;
