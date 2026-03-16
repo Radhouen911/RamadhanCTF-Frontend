@@ -1,8 +1,12 @@
 # Ramadhan CTFd Theme
 
-This repository contains the React + Vite frontend used as the **Ramadhan theme for CTFd**. It is a single-page application mounted inside the CTFd theme system and synced into the theme templates during build.
+This repository contains the React + Vite frontend used as the **Ramadhan theme for CTFd**. It is a single-page application mounted inside the CTFd theme system.
 
-The project is designed to work with a live CTFd backend and supports real event data for challenges, teams, scoreboard, profiles, notifications, and dynamic container-based challenges.
+## Archive Mode Preview
+
+View the archived Ramadhan CTF 2026 event: **[https://radhouen911.github.io/RamadhanCTF-Frontend/teams](https://radhouen911.github.io/RamadhanCTF-Frontend/teams)**
+
+The archive includes all challenges, teams, and scoreboard data from the event.
 
 ## Stack
 
@@ -44,14 +48,14 @@ The project is designed to work with a live CTFd backend and supports real event
 
 ### Visibility / dark hour support
 
-The frontend now respects CTFd visibility configuration dynamically.
+The frontend respects CTFd visibility configuration dynamically.
 
 - `challenge_visibility`
 - `account_visibility`
 - `score_visibility`
 - `registration_visibility`
 
-This enables **dark hour** behavior without custom frontend scheduling logic:
+This enables **dark hour** behavior:
 
 - when `score_visibility = hidden`, scoreboard and solve-related data are hidden for non-admin users
 - public and personal solve views respect score visibility
@@ -59,7 +63,7 @@ This enables **dark hour** behavior without custom frontend scheduling logic:
 
 ### CTFd-Whale container challenges
 
-The current frontend supports **Whale / dynamic container challenges**.
+The frontend supports **Whale / dynamic container challenges**.
 
 - Detects container-capable challenge types from CTFd challenge metadata
 - Checks current container status
@@ -68,58 +72,11 @@ The current frontend supports **Whale / dynamic container challenges**.
 - Stops active containers
 - Displays returned access info (URL or command)
 
-Supported Whale endpoints:
-
-- `GET /api/v1/plugins/ctfd-whale/container?challenge_id=<id>`
-- `POST /api/v1/plugins/ctfd-whale/container?challenge_id=<id>`
-- `PATCH /api/v1/plugins/ctfd-whale/container?challenge_id=<id>`
-- `DELETE /api/v1/plugins/ctfd-whale/container`
-
-## Local Development
-
-```bash
-npm install
-npm run dev
-```
-
-Default Vite dev URL:
-
-- `http://localhost:5173`
-
 ## Production Build
 
 ```bash
 npm run build
 ```
-
-Build behavior:
-
-- outputs compiled assets into `static/assets`
-- updates `templates/base.html` with the latest generated asset filenames
-- keeps the theme ready for direct use by CTFd
-
-## Deployment
-
-This repo includes a GitHub Actions workflow that deploys the theme to the server.
-
-Current deploy flow:
-
-- connects to the server over SSH
-- ensures the theme repo exists on the target machine
-- force-syncs the repo to `origin/main`
-- runs `npm ci`
-- runs `npm run build`
-- restarts the CTFd container
-
-The workflow intentionally uses:
-
-```bash
-git fetch origin main
-git reset --hard origin/main
-git clean -fd
-```
-
-This avoids deployment failures caused by tracked generated files like `templates/base.html` being modified on the server after build.
 
 ## Docker
 
@@ -135,7 +92,7 @@ docker run --rm -p 8080:80 ramadhan-ctfd-theme
 - The app is a CTFd theme, not a standalone backend
 - Generated asset references are synced into `templates/base.html`
 - Most data is loaded live from CTFd rather than hardcoded
-- `oldArcade/` is preserved as a legacy reference implementation
+- Archive mode displays static event data from JSON files
 
 ## Contact
 
