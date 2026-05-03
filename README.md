@@ -4,7 +4,7 @@ This repository contains the React + Vite frontend used as the **Ramadhan theme 
 
 ## Archive Mode Preview
 
-View the archived Ramadhan CTF 2026 event: **[https://radhouen911.github.io/RamadhanCTF-Frontend/teams](https://radhouen911.github.io/RamadhanCTF-Frontend/teams)**
+View the archived Ramadhan CTF 2026 event: **[https://radhouen911.github.io/RamadhanCTF-Frontend/teams](https://radhouen911.github.io/RamadhanCTF-Frontend/)**
 
 The archive includes all challenges, teams, and scoreboard data from the event.
 
